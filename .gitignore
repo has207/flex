@@ -1,0 +1,7 @@
+.gitignore
+build/
+dist/
+*.pyc
+*.swp
+tags
+MANIFEST
