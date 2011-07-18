@@ -56,7 +56,3 @@ class MethodCalledOutOfOrder(TestutilsError):
 
 class MethodDoesNotExist(TestutilsError):
     pass
-
-
-class AlreadyMocked(TestutilsError):
-    pass

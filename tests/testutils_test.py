@@ -1,5 +1,4 @@
 # -*- coding: utf8 -*-
-from testutils.exceptions import AlreadyMocked
 from testutils.exceptions import AttemptingToMockBuiltin
 from testutils.exceptions import TestutilsError
 from testutils.exceptions import InvalidMethodSignature
@@ -741,14 +740,14 @@ class RegularClass(object):
 
     def test_testutils_should_blow_up_on_wrong_spy_exception_type(self):
         class User:
-            def get_stuff(self): raise AlreadyMocked('foo')
+            def get_stuff(self): raise Exception('foo')
         user = User()
         wrap(user).get_stuff.calls_original().raises(MethodNotCalled)
         assertRaises(InvalidExceptionClass, user.get_stuff)
 
     def test_testutils_should_match_spy_exception_parent_type(self):
         class User:
-            def get_stuff(self): raise AlreadyMocked('foo')
+            def get_stuff(self): raise MethodNotCalled('foo')
         user = User()
         wrap(user).get_stuff.calls_original().raises(TestutilsError)
         user.get_stuff()

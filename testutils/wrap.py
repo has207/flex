@@ -23,11 +23,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 import inspect
-import re
 import sys
 import types
 
-from testutils.helpers import _arg_to_str
 from testutils.helpers import _arguments_match
 from testutils.helpers import _isclass
 from testutils.helpers import _format_args
