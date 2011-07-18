@@ -23,42 +23,40 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 class TestutilsError(Exception):
-  pass
+    pass
 
 
 class AttemptingToMockBuiltin(TestutilsError):
-  pass
+    pass
 
 
 class InvalidMethodSignature(TestutilsError):
-  pass
+    pass
 
 
 class InvalidExceptionClass(TestutilsError):
-  pass
+    pass
 
 
 class InvalidExceptionMessage(TestutilsError):
-  pass
+    pass
 
 
 class InvalidState(TestutilsError):
-  pass
+    pass
 
 
 class MethodNotCalled(TestutilsError):
-  pass
+    pass
 
 
 class MethodCalledOutOfOrder(TestutilsError):
-  pass
+    pass
 
 
 class MethodDoesNotExist(TestutilsError):
-  pass
+    pass
 
 
 class AlreadyMocked(TestutilsError):
-  pass
-
-
+    pass

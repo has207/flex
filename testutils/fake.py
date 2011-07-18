@@ -27,64 +27,64 @@ import sys
 
 class Fake(object):
 
-  def __init__(self, **kwargs):
-    """Fake constructor.
+    def __init__(self, **kwargs):
+        """Constructors the fake object.
 
-    Args:
-      - kwargs: dict of attribute/value pairs used to initialize the fake object
-    """
-    self.__calls__ = []
-    for attr, value in kwargs.items():
-      if hasattr(value, '__call__'):
-        setattr(self, attr, self._recordable(value))
-      else:
-        setattr(self, attr, value)
+        Args:
+            - kwargs: dict of attribute/value pairs used to populate the object
+        """
+        self.__calls__ = []
+        for attr, value in kwargs.items():
+            if hasattr(value, '__call__'):
+                setattr(self, attr, self._recordable(value))
+            else:
+                setattr(self, attr, value)
 
-  def __enter__(self):
-    return self.__object__
+    def __enter__(self):
+        return self.__object__
 
-  def __exit__(self, type, value, traceback):
-    return self
+    def __exit__(self, type, value, traceback):
+        return self
 
-  def __call__(self, *kargs, **kwargs):
-    calls = object.__getattribute__(self, '__calls__')
-    if calls:
-      call = calls[-1]
-      call['kargs'] = kargs
-      call['kwargs'] = kwargs
-      call['returned'] = self
-    return self
+    def __call__(self, *kargs, **kwargs):
+        calls = object.__getattribute__(self, '__calls__')
+        if calls:
+            call = calls[-1]
+            call['kargs'] = kargs
+            call['kwargs'] = kwargs
+            call['returned'] = self
+        return self
 
-  def __getattribute__(self, name):
-    attr = object.__getattribute__(self, name)
-    if name not in ORIGINAL_FAKE_ATTRS:
-      calls = object.__getattribute__(self, '__calls__')
-      calls.append({'name': name, 'returned': attr})
-    return attr
+    def __getattribute__(self, name):
+        attr = object.__getattribute__(self, name)
+        if name not in ORIGINAL_FAKE_ATTRS:
+            calls = object.__getattribute__(self, '__calls__')
+            calls.append({'name': name, 'returned': attr})
+        return attr
 
-  def __getattr__(self, name):
-    calls = object.__getattribute__(self, '__calls__')
-    calls.append({'name': name, 'returned': self})
-    return self
+    def __getattr__(self, name):
+        calls = object.__getattribute__(self, '__calls__')
+        calls.append({'name': name, 'returned': self})
+        return self
 
-  def _recordable(self, func):
-    def inner(*kargs, **kwargs):
-      calls = object.__getattribute__(self, '__calls__')
-      if not calls:
-        return func(*kargs, **kwargs)
-      else:
-        call = calls[-1]
-        call['kargs'] = kargs
-        call['kwargs'] = kwargs
-        try:
-          ret = func(*kargs, **kwargs)
-          call['returned'] = ret
-          return ret
-        except:
-          call['raised'] = sys.exc_info()
-          del call['returned']
-          raise
-    return inner
+    def _recordable(self, func):
+        def inner(*kargs, **kwargs):
+            calls = object.__getattribute__(self, '__calls__')
+            if not calls:
+                return func(*kargs, **kwargs)
+            else:
+                call = calls[-1]
+                call['kargs'] = kargs
+                call['kwargs'] = kwargs
+                try:
+                    ret = func(*kargs, **kwargs)
+                    call['returned'] = ret
+                    return ret
+                except:
+                    call['raised'] = sys.exc_info()
+                    del call['returned']
+                    raise
+        return inner
 
 
 ORIGINAL_FAKE_ATTRS = dir(Fake) + ['__calls__']
