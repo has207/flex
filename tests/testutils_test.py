@@ -1,19 +1,21 @@
 # -*- coding: utf8 -*-
-import testutils
-from testutils import AlreadyMocked
-from testutils import AttemptingToMockBuiltin
-from testutils import TestutilsContainer
-from testutils import TestutilsError
-from testutils import InvalidMethodSignature
-from testutils import InvalidExceptionClass
-from testutils import InvalidExceptionMessage
-from testutils import InvalidState
-from testutils import MethodDoesNotExist
-from testutils import MethodNotCalled
-from testutils import MethodCalledOutOfOrder
-from testutils import ReturnValue
-from testutils import teardown
-from testutils import format_args
+from testutils.exceptions import AlreadyMocked
+from testutils.exceptions import AttemptingToMockBuiltin
+from testutils.exceptions import TestutilsError
+from testutils.exceptions import InvalidMethodSignature
+from testutils.exceptions import InvalidExceptionClass
+from testutils.exceptions import InvalidExceptionMessage
+from testutils.exceptions import InvalidState
+from testutils.exceptions import MethodDoesNotExist
+from testutils.exceptions import MethodNotCalled
+from testutils.exceptions import MethodCalledOutOfOrder
+from testutils.expectation import ReturnValue
+from testutils.helpers import _format_args
+from testutils import _get_expectation
+from testutils import _testutils_objects
+from testutils import _teardown
+from testutils import fake
+from testutils import wrap
 import re
 import sys
 import unittest
@@ -44,7 +46,7 @@ def assertEqual(expected, received, msg=''):
 class RegularClass(object):
 
   def _tear_down(self):
-    return teardown()
+    return _teardown()
 
   def test_testutils_should_create_mock_object_from_dict(self):
     mock = fake(foo='foo', bar='bar')
@@ -56,8 +58,7 @@ class RegularClass(object):
       def method_foo(self): pass
     mock = wrap(Foo)
     mock.method_foo
-    assert ('method_foo' in
-            [x.method for x in TestutilsContainer.testutils_objects[mock]])
+    assert ('method_foo' in [x.method for x in _testutils_objects[mock]])
 
   def test_testutils_should_return_value(self):
     class Foo:
@@ -90,17 +91,14 @@ class RegularClass(object):
       def method_foo(self): pass
     mock = wrap(Foo)
     mock.method_foo
-    assertEqual('method_foo',
-                TestutilsContainer.get_testutils_expectation(
-                     mock, 'method_foo').method)
+    assertEqual('method_foo', _get_expectation(mock, 'method_foo').method)
 
   def test_testutils_expectations_returns_none_if_not_found(self):
     class Foo:
       def method_foo(self): pass
     mock = wrap(Foo)
     mock.method_foo
-    assert (TestutilsContainer.get_testutils_expectation(
-       mock, 'method_bar') is None)
+    assert _get_expectation(mock, 'method_bar') is None
 
   def test_testutils_should_check_parameters(self):
     class Foo:
@@ -123,14 +121,11 @@ class RegularClass(object):
     foo.method_foo('bar')
     foo.method_foo('bar')
     foo.method_foo('baz')
-    expectation = TestutilsContainer.get_testutils_expectation(
-        mock, 'method_foo', ('foo',))
+    expectation = _get_expectation(mock, 'method_foo', ('foo',))
     assertEqual(0, expectation.times_called)
-    expectation = TestutilsContainer.get_testutils_expectation(
-        mock, 'method_foo', ('bar',))
+    expectation = _get_expectation(mock, 'method_foo', ('bar',))
     assertEqual(2, expectation.times_called)
-    expectation = TestutilsContainer.get_testutils_expectation(
-        mock, 'method_foo', ('baz',))
+    expectation = _get_expectation(mock, 'method_foo', ('baz',))
     assertEqual(1, expectation.times_called)
 
   def test_testutils_should_set_expectation_call_numbers(self):
@@ -139,7 +134,7 @@ class RegularClass(object):
     foo = Foo()
     mock = wrap(foo)
     mock.method_foo.x(1)
-    expectation = TestutilsContainer.get_testutils_expectation(mock, 'method_foo')
+    expectation = _get_expectation(mock, 'method_foo')
     assertRaises(MethodNotCalled, expectation._verify)
     foo.method_foo()
     expectation._verify()
@@ -153,9 +148,7 @@ class RegularClass(object):
     foo = Foo()
     mock.method_foo.raises(FakeException)
     assertRaises(FakeException, foo.method_foo)
-    assertEqual(1,
-                TestutilsContainer.get_testutils_expectation(
-                    mock, 'method_foo').times_called)
+    assertEqual(1, _get_expectation(mock, 'method_foo').times_called)
 
   def test_testutils_should_check_raised_exceptions_instance_with_args(self):
     class Foo:
@@ -167,9 +160,7 @@ class RegularClass(object):
         pass
     mock.method_foo.raises(FakeException(1, arg2=2))
     assertRaises(FakeException, foo.method_foo)
-    assertEqual(1,
-                TestutilsContainer.get_testutils_expectation(
-                    mock, 'method_foo').times_called)
+    assertEqual(1, _get_expectation(mock, 'method_foo').times_called)
 
   def test_testutils_should_check_raised_exceptions_class_with_args(self):
     class Foo:
@@ -181,9 +172,7 @@ class RegularClass(object):
         pass
     mock.method_foo.raises(FakeException, 1, arg2=2)
     assertRaises(FakeException, foo.method_foo)
-    assertEqual(1,
-                TestutilsContainer.get_testutils_expectation(
-                    mock, 'method_foo').times_called)
+    assertEqual(1, _get_expectation(mock, 'method_foo').times_called)
 
   def test_testutils_should_match_any_args_by_default(self):
     class Foo:
@@ -443,8 +432,7 @@ class RegularClass(object):
     foo = Foo()
     mock = wrap(foo)
     mock.method_foo('value_bar')
-    assert TestutilsContainer.get_testutils_expectation(
-        mock, 'method_foo', 'value_bar')
+    assert _get_expectation(mock, 'method_foo', 'value_bar')
 
   def test_testutils_function_should_always_return_same_mock_object(self):
     class User(object): pass
@@ -570,16 +558,18 @@ class RegularClass(object):
       def method1(self): pass
     foo = Foo()
     wrap(foo).method1.returns(1, 5).returns(2)
-    assertEqual((1, 5), foo.method1())
+    assertEqual(1, foo.method1())
+    assertEqual(5, foo.method1())
     assertEqual(2, foo.method1())
-    assertEqual((1, 5), foo.method1())
+    assertEqual(1, foo.method1())
+    assertEqual(5, foo.method1())
     assertEqual(2, foo.method1())
 
   def test_testutils_should_accept_multiple_return_values_with_shortcut(self):
     class Foo:
       def method1(self): pass
     foo = Foo()
-    wrap(foo).method1.returns(1, 2).one_by_one()
+    wrap(foo).method1.returns(1, 2)
     assertEqual(1, foo.method1())
     assertEqual(2, foo.method1())
     assertEqual(1, foo.method1())
@@ -697,7 +687,7 @@ class RegularClass(object):
     class User:
       def get_stuff(self): return 'real', 'stuff'
     user = User()
-    wrap(user).get_stuff.calls_original().returns('real', 'stuff')
+    wrap(user).get_stuff.calls_original().returns(('real', 'stuff'))
     assertEqual(('real', 'stuff'), user.get_stuff())
 
   def test_testutils_should_verify_correct_spy_regexp_return_values(self):
@@ -705,7 +695,7 @@ class RegularClass(object):
       def get_stuff(self): return 'real', 'stuff'
     user = User()
     wrap(user).get_stuff.calls_original().returns(
-        re.compile('ea.*'), re.compile('^stuff$'))
+        (re.compile('ea.*'), re.compile('^stuff$')))
     assertEqual(('real', 'stuff'), user.get_stuff())
 
   def test_testutils_should_verify_spy_raises_correct_exception_class(self):
@@ -769,7 +759,7 @@ class RegularClass(object):
       def get_stuff(self): return 'real', 'stuff'
       def get_more_stuff(self): return 'other', 'stuff'
     user = User()
-    wrap(user).get_stuff.calls_original().returns('other', 'stuff')
+    wrap(user).get_stuff.calls_original().returns(('other', 'stuff'))
     assertRaises(InvalidMethodSignature, user.get_stuff)
     wrap(user).get_more_stuff.calls_original().returns()
     assertRaises(InvalidMethodSignature, user.get_more_stuff)
@@ -838,7 +828,7 @@ class RegularClass(object):
       def bax(self): return None
     foo = Foo()
     mock = wrap(foo)
-    mock.foo.calls_original().returns(str, str)
+    mock.foo.calls_original().returns((str, str))
     mock.bar.calls_original().returns(User)
     mock.baz.calls_original().returns(object)
     mock.bax.calls_original().returns(None)
@@ -859,11 +849,11 @@ class RegularClass(object):
 
   def test_testutils_should_not_explode_on_unicode_formatting(self):
     if sys.version_info >= (3, 0):
-      formatted = format_args(
+      formatted = _format_args(
           'method', {'kargs' : (chr(0x86C7),), 'kwargs' : {}})
       assertEqual('method("蛇")', formatted)
     else:
-      formatted = format_args(
+      formatted = _format_args(
           'method', {'kargs' : (unichr(0x86C7),), 'kwargs' : {}})
       assertEqual('method("%s")' % unichr(0x86C7), formatted)
 
@@ -975,7 +965,7 @@ class RegularClass(object):
 
   def test_new_instances_works_with_multiple_return_values(self):
     class Foo(object): pass
-    wrap(Foo).__new__.returns('foo', 'bar').one_by_one()
+    wrap(Foo).__new__.returns('foo', 'bar')
     assertEqual('foo', Foo())
     assertEqual('bar', Foo())
 
@@ -1108,7 +1098,7 @@ class TestTestutilsUnittest(RegularClass, unittest.TestCase):
     pass
 
   def _tear_down(self):
-    return teardown()
+    return _teardown()
 
 
 if sys.version_info >= (2, 6):

@@ -1,9 +1,10 @@
 import sys
-import testutils
+from testutils import fake, wrap
 import unittest
 
 class ModernClass(object):
   """Contains features only available in 2.6 and above."""
+
   def test_testutils_should_support_with(self):
     foo = fake(foo='bar')
     with foo as mock:
@@ -19,7 +20,6 @@ class ModernClass(object):
     with open('file_name') as f:
       data = f.read()
     self.assertEqual('some data', data)
-
 
 
 class TestutilsUnittestModern(ModernClass, unittest.TestCase):
