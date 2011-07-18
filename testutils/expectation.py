@@ -266,8 +266,8 @@ class Expectation(object):
                 setattr(obj, method, original_method)
         del self
 
-    def _verify_call_order(self):
-        for exp in testutils._testutils_objects[self._mock]:
+    def _verify_call_order(self, testutils_objects):
+        for exp in testutils_objects[self._mock]:
             if (exp.method == self.method and
                     not _match_args(self.args, exp.args) and
                     not exp.times_called):

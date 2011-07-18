@@ -27,7 +27,6 @@ import re
 import sys
 import types
 
-import testutils
 from testutils.helpers import _arg_to_str
 from testutils.helpers import _arguments_match
 from testutils.helpers import _isclass
@@ -36,6 +35,10 @@ from testutils.helpers import _match_args
 from testutils.expectation import Expectation
 from testutils.expectation import ReturnValue
 from testutils.exceptions import *
+
+
+# Holds global hash of object/expectation mappings
+_testutils_objects = {}
 
 
 class Wrap(object):
@@ -53,7 +56,7 @@ class Wrap(object):
         self.__object__ = spec
         for method, return_value in methods.items():
             self._stubs(method).returns(return_value)
-        testutils._add_expectation(self, Expectation(self))
+        self._add_expectation(Expectation(self))
 
     def __getattribute__(self, name):
         # TODO(herman): this sucks, generalize this!
@@ -88,13 +91,13 @@ class Wrap(object):
         if not isinstance(obj, Wrap) and not hasattr(obj, method):
             raise MethodDoesNotExist('%s does not have method %s' %
                                      (obj, method))
-        if self not in testutils._testutils_objects:
-            testutils._testutils_objects[self] = []
+        if self not in _testutils_objects:
+            _testutils_objects[self] = []
         expectation = self._create_expectation(method, return_value)
-        if expectation not in testutils._testutils_objects[self]:
+        if expectation not in _testutils_objects[self]:
             try:
                 self._update_method(expectation, method)
-                testutils._testutils_objects[self].append(expectation)
+                _testutils_objects[self].append(expectation)
             except TypeError:
                 raise AttemptingToMockBuiltin(
                     'Python does not allow updating builtin objects. '
@@ -106,8 +109,8 @@ class Wrap(object):
         return expectation
 
     def _create_expectation(self, method, return_value=None):
-        if method in [x.method for x in testutils._testutils_objects[self]]:
-            expectation = [x for x in testutils._testutils_objects[self]
+        if method in [x.method for x in _testutils_objects[self]]:
+            expectation = [x for x in _testutils_objects[self]
                            if x.method == method][0]
             original_method = expectation.original_method
             expectation = Expectation(
@@ -212,7 +215,7 @@ class Wrap(object):
 
         def mock_method(runtime_self, *kargs, **kwargs):
             arguments = {'kargs': kargs, 'kwargs': kwargs}
-            expectation = testutils._get_expectation(self, method, arguments)
+            expectation = self._get_expectation(method, arguments)
             if expectation:
                 if not expectation.runnable():
                     raise InvalidState(
@@ -248,3 +251,25 @@ class Wrap(object):
                 raise InvalidMethodSignature(_format_args(method, arguments))
 
         return mock_method
+
+    def _get_expectation(self, name=None, args=None):
+        """Gets attached to the object under mock and is called in that context."""
+        if args == None:
+            args = {'kargs': (), 'kwargs': {}}
+        if not isinstance(args, dict):
+            args = {'kargs': args, 'kwargs': {}}
+        if not isinstance(args['kargs'], tuple):
+            args['kargs'] = (args['kargs'],)
+        if name and self in _testutils_objects:
+            for e in reversed(_testutils_objects[self]):
+                if e.method == name and _match_args(args, e.args):
+                    if e._ordered:
+                        e._verify_call_order(_testutils_objects)
+                    return e
+
+
+    def _add_expectation(self, expectation):
+        if self in _testutils_objects:
+            _testutils_objects[self].append(expectation)
+        else:
+            _testutils_objects[self] = [expectation]

@@ -26,11 +26,8 @@ import sys
 
 from testutils.fake import Fake
 from testutils.helpers import _match_args
+from testutils.wrap import _testutils_objects
 from testutils.wrap import Wrap
-
-
-# Holds global hash of object/expectation mappings
-_testutils_objects = {}
 
 
 def wrap(spec, **kwargs):
@@ -78,29 +75,6 @@ def _teardown():
     for mock_object, expectations in saved.items():
         for expectation in expectations:
             expectation._verify()
-
-
-def _get_expectation(obj, name=None, args=None):
-    """Gets attached to the object under mock and is called in that context."""
-    if args == None:
-        args = {'kargs': (), 'kwargs': {}}
-    if not isinstance(args, dict):
-        args = {'kargs': args, 'kwargs': {}}
-    if not isinstance(args['kargs'], tuple):
-        args['kargs'] = (args['kargs'],)
-    if name and obj in _testutils_objects:
-        for e in reversed(_testutils_objects[obj]):
-            if e.method == name and _match_args(args, e.args):
-                if e._ordered:
-                    e._verify_call_order()
-                return e
-
-
-def _add_expectation(obj, expectation):
-    if obj in _testutils_objects:
-        _testutils_objects[obj].append(expectation)
-    else:
-        _testutils_objects[obj] = [expectation]
 
 
 # RUNNER INTEGRATION
