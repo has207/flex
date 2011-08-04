@@ -28,6 +28,7 @@ import types
 
 
 def _arg_to_str(arg):
+    arg = '%s' % arg  # ensure unicode args are properly handled
     if '_sre.SRE_Pattern' in str(type(arg)):
         return '/%s/' % arg.pattern
     if isinstance(arg, tuple):
