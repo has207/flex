@@ -11,9 +11,9 @@ from testutils.exceptions import MethodCalledOutOfOrder
 from testutils.expectation import ReturnValue
 from testutils.helpers import _format_args
 from testutils import _testutils_objects
-from testutils import _teardown
+from testutils import verify
 from testutils import fake
-from testutils import wrap
+from testutils import flex
 import re
 import sys
 import unittest
@@ -44,7 +44,7 @@ def assertEqual(expected, received, msg=''):
 class RegularClass(object):
 
     def _tear_down(self):
-        return _teardown()
+        return verify()
 
     def test_testutils_should_create_mock_object_from_dict(self):
         mock = fake(foo='foo', bar='bar')
@@ -54,7 +54,7 @@ class RegularClass(object):
     def test_testutils_should_add_expectations(self):
         class Foo:
             def method_foo(self): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         mock.method_foo
         assert ('method_foo' in [x.method for x in _testutils_objects[mock]])
 
@@ -63,7 +63,7 @@ class RegularClass(object):
             def method_foo(self): pass
             def method_bar(self): pass
         foo = Foo()
-        mock = wrap(foo)
+        mock = flex(foo)
         mock.method_foo.returns('value_bar')
         mock.method_bar.returns('value_baz')
         assertEqual('value_bar', foo.method_foo())
@@ -79,7 +79,7 @@ class RegularClass(object):
             def method1(self): pass
             def method2(self): pass
         foo = Foo()
-        wrap(foo, method1='returning 1', method2='returning 2')
+        flex(foo, method1='returning 1', method2='returning 2')
         assertEqual('returning 1', foo.method1())
         assertEqual('returning 2', foo.method2())
         assertEqual('returning 2', foo.method2())
@@ -87,14 +87,14 @@ class RegularClass(object):
     def test_testutils_expectations_returns_named_expectation(self):
         class Foo:
             def method_foo(self): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         mock.method_foo
         assertEqual('method_foo', mock._get_expectation('method_foo').method)
 
     def test_testutils_expectations_returns_none_if_not_found(self):
         class Foo:
             def method_foo(self): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         mock.method_foo
         assert mock._get_expectation('method_bar') is None
 
@@ -102,7 +102,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        mock = wrap(foo)
+        mock = flex(foo)
         mock.method_foo('bar').returns(1)
         mock.method_foo('baz').returns(2)
         assertEqual(1, foo.method_foo('bar'))
@@ -112,7 +112,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        mock = wrap(foo)
+        mock = flex(foo)
         mock.method_foo('foo').returns(0)
         mock.method_foo('bar').returns(1)
         mock.method_foo('baz').returns(2)
@@ -130,8 +130,8 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        mock = wrap(foo)
-        mock.method_foo.x(1)
+        mock = flex(foo)
+        mock.method_foo.times(1)
         expectation = mock._get_expectation('method_foo')
         assertRaises(MethodNotCalled, expectation._verify)
         foo.method_foo()
@@ -140,7 +140,7 @@ class RegularClass(object):
     def test_testutils_should_check_raised_exceptions(self):
         class Foo:
             def method_foo(): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         class FakeException(Exception):
             pass
         foo = Foo()
@@ -151,7 +151,7 @@ class RegularClass(object):
     def test_testutils_should_check_raised_exceptions_instance_with_args(self):
         class Foo:
             def method_foo(): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         foo = Foo()
         class FakeException(Exception):
             def __init__(self, arg, arg2):
@@ -163,7 +163,7 @@ class RegularClass(object):
     def test_testutils_should_check_raised_exceptions_class_with_args(self):
         class Foo:
             def method_foo(): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         foo = Foo()
         class FakeException(Exception):
             def __init__(self, arg, arg2):
@@ -175,7 +175,7 @@ class RegularClass(object):
     def test_testutils_should_match_any_args_by_default(self):
         class Foo:
             def method_foo(): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         foo = Foo()
         mock.method_foo.returns('bar')
         mock.method_foo('baz').returns('baz')
@@ -187,7 +187,7 @@ class RegularClass(object):
     def test_should_fail_to_match_exactly_no_args_when_calling_with_args(self):
         class Foo:
             def method_foo(): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         foo = Foo()
         mock.method_foo()
         assertRaises(InvalidMethodSignature, foo.method_foo, 'baz')
@@ -196,13 +196,13 @@ class RegularClass(object):
         class Foo:
             def bar(self): pass
         foo = Foo()
-        wrap(foo).bar().returns('baz')
+        flex(foo).bar().returns('baz')
         assertEqual('baz', foo.bar())
 
     def test_expectation_dot_mock_should_return_mock(self):
         class Foo:
             def bar(self): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         assertEqual(mock, mock.bar.mock)
 
     def test_testutils_should_create_partial_new_style_object_mock(self):
@@ -214,7 +214,7 @@ class RegularClass(object):
             def set_name(self, name):
                 self.name = name
         user = User()
-        wrap(user).get_name.returns('john')
+        flex(user).get_name.returns('john')
         user.set_name('mike')
         assertEqual('john', user.get_name())
 
@@ -227,7 +227,7 @@ class RegularClass(object):
             def set_name(self, name):
                 self.name = name
         user = User()
-        wrap(user).get_name.returns('john')
+        flex(user).get_name.returns('john')
         user.set_name('mike')
         assertEqual('john', user.get_name())
 
@@ -235,7 +235,7 @@ class RegularClass(object):
         class User(object):
             def __init__(self): pass
             def get_name(self): pass
-        wrap(User).get_name.returns('mike')
+        flex(User).get_name.returns('mike')
         user = User()
         assertEqual('mike', user.get_name())
 
@@ -243,14 +243,14 @@ class RegularClass(object):
         class User:
             def __init__(self): pass
             def get_name(self): pass
-        wrap(User).get_name.returns('mike')
+        flex(User).get_name.returns('mike')
         user = User()
         assertEqual('mike', user.get_name())
 
     def test_should_match_expectations_against_builtin_classes(self):
         class Foo:
             def method_foo(self): pass
-        mock = wrap(Foo)
+        mock = flex(Foo)
         foo = Foo()
         mock.method_foo(str).returns('got a string')
         mock.method_foo(int).returns('got an int')
@@ -262,7 +262,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo
-        mock = wrap(foo)
+        mock = flex(foo)
         mock.method_foo(Foo).returns('got a Foo')
         assertEqual('got a Foo', foo.method_foo(Foo()))
         assertRaises(InvalidMethodSignature, foo.method_foo, 1)
@@ -270,13 +270,13 @@ class RegularClass(object):
     def test_testutils_teardown_verifies_mocks(self):
         class Foo:
             def uncalled_method(self): pass
-        wrap(Foo).uncalled_method.x(1)
+        flex(Foo).uncalled_method.times(1)
         assertRaises(MethodNotCalled, self._tear_down)
 
     def test_testutils_teardown_does_not_verify_stubs(self):
         class Foo:
             def uncalled_method(self): pass
-        wrap(Foo).uncalled_method()
+        flex(Foo).uncalled_method()
         self._tear_down()
 
     def test_testutils_preserves_stubbed_object_methods_between_tests(self):
@@ -284,7 +284,7 @@ class RegularClass(object):
             def get_name(self):
                 return 'mike'
         user = User()
-        wrap(user).get_name().returns('john')
+        flex(user).get_name().returns('john')
         assertEqual('john', user.get_name())
         self._tear_down()
         assertEqual('mike', user.get_name())
@@ -294,7 +294,7 @@ class RegularClass(object):
             def get_name(self):
                 return 'mike'
         user = User()
-        wrap(User).get_name.returns('john')
+        flex(User).get_name.returns('john')
         assertEqual('john', user.get_name())
         self._tear_down()
         assertEqual('mike', user.get_name())
@@ -304,7 +304,7 @@ class RegularClass(object):
             def get_name(self): pass
         user = User()
         saved = user.get_name
-        wrap(user).get_name.returns('john')
+        flex(user).get_name.returns('john')
         assert saved != user.get_name
         assertEqual('john', user.get_name())
         self._tear_down()
@@ -315,7 +315,7 @@ class RegularClass(object):
             def get_name(self): pass
         user = User()
         saved = user.get_name
-        wrap(User).get_name.returns('john')
+        flex(User).get_name.returns('john')
         assert saved != user.get_name
         assertEqual('john', user.get_name())
         self._tear_down()
@@ -330,8 +330,8 @@ class RegularClass(object):
         group = User()
         saved1 = user.get_name
         saved2 = group.get_name
-        wrap(user).get_name.returns('john').x(1)
-        wrap(group).get_name.returns('john').x(1)
+        flex(user).get_name.returns('john').times(1)
+        flex(group).get_name.returns('john').times(1)
         assert saved1 != user.get_name
         assert saved2 != group.get_name
         assertEqual('john', user.get_name())
@@ -349,8 +349,8 @@ class RegularClass(object):
         group = User()
         saved1 = user.get_name
         saved2 = group.get_name
-        wrap(User).get_name.returns('john')
-        wrap(Group).get_name.returns('john')
+        flex(User).get_name.returns('john')
+        flex(Group).get_name.returns('john')
         assert saved1 != user.get_name
         assert saved2 != group.get_name
         assertEqual('john', user.get_name())
@@ -363,7 +363,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('bar').x(2,-1)
+        flex(foo).method_foo.returns('bar').times(2, None)
         foo.method_foo()
         assertRaises(MethodNotCalled, self._tear_down)
 
@@ -371,7 +371,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(1,-1)
+        flex(foo).method_foo.returns('value_bar').times(1, None)
         foo.method_foo()
         self._tear_down()
 
@@ -379,7 +379,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(1,-1)
+        flex(foo).method_foo.returns('value_bar').times(1, None)
         foo.method_foo()
         foo.method_foo()
         self._tear_down()
@@ -388,7 +388,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('bar').x(0,2)
+        flex(foo).method_foo.returns('bar').times(0, 2)
         foo.method_foo()
         self._tear_down()
 
@@ -396,7 +396,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(0,1)
+        flex(foo).method_foo.returns('value_bar').times(0, 1)
         foo.method_foo()
         self._tear_down()
 
@@ -404,7 +404,7 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(0,1)
+        flex(foo).method_foo.returns('value_bar').times(0, 1)
         foo.method_foo()
         foo.method_foo()
         assertRaises(MethodNotCalled, self._tear_down)
@@ -413,14 +413,14 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(0)
+        flex(foo).method_foo.returns('value_bar').times(0)
         self._tear_down()
 
     def test_testutils_works_with_never_when_false(self):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        wrap(foo).method_foo.returns('value_bar').x(0)
+        flex(foo).method_foo.returns('value_bar').times(0)
         foo.method_foo()
         assertRaises(MethodNotCalled, self._tear_down)
     
@@ -428,24 +428,24 @@ class RegularClass(object):
         class Foo:
             def method_foo(self): pass
         foo = Foo()
-        mock = wrap(foo)
+        mock = flex(foo)
         mock.method_foo('value_bar')
         assert mock._get_expectation('method_foo', 'value_bar')
 
     def test_testutils_function_should_always_return_same_mock_object(self):
         class User(object): pass
         user = User()
-        foo = wrap(user)
+        foo = flex(user)
         assert foo != user
-        assert foo == wrap(user)
+        assert foo == flex(user)
 
     def test_should_not_return_class_object_if_mocking_instance(self):
         class User:
             def method(self): pass
         user = User()
         user2 = User()
-        class_mock = wrap(User).method.returns('class').mock
-        user_mock = wrap(user).method.returns('instance').mock
+        class_mock = flex(User).method.returns('class').mock
+        user_mock = flex(user).method.returns('instance').mock
         assert class_mock is not user_mock
         assertEqual('instance', user.method())
         assertEqual('class', user2.method())
@@ -454,14 +454,14 @@ class RegularClass(object):
         class User:
             def foo(self):
                 return 'class'
-        assertRaises(TestutilsError, wrap(User).foo.calls_original)
+        assertRaises(TestutilsError, flex(User).foo.runs)
 
     def test_should_not_blow_up_on_default_for_class_methods(self):
         class User:
             @classmethod
             def foo(self):
                 return 'class'
-        wrap(User).foo.calls_original()
+        flex(User).foo.runs()
         assertEqual('class', User.foo())
 
     def test_should_not_blow_up_on_default_for_static_methods(self):
@@ -469,7 +469,7 @@ class RegularClass(object):
             @staticmethod
             def foo():
                 return 'static'
-        wrap(User).foo.calls_original()
+        flex(User).foo.runs()
         assertEqual('static', User.foo())
 
     def test_should_mock_new_instances_with_multiple_params(self):
@@ -478,7 +478,7 @@ class RegularClass(object):
             def __init__(self, arg, arg2):
                 pass
         user = User()
-        wrap(Group).__new__.returns(user)
+        flex(Group).__new__.returns(user)
         assert user is Group(1, 2)
 
     def test_testutils_should_revert_new_instances_on_teardown(self):
@@ -486,7 +486,7 @@ class RegularClass(object):
         class Group(object): pass
         user = User()
         group = Group()
-        wrap(Group).__new__.returns(user)
+        flex(Group).__new__.returns(user)
         assert user is Group()
         self._tear_down()
         assertEqual(group.__class__, Group().__class__)
@@ -498,10 +498,10 @@ class RegularClass(object):
             def method2(self, arg):
                 return arg
         group = Group()
-        wrap(group).method1.calls_original().x(2)
+        flex(group).method1.runs().times(2)
         assertEqual('a:c', group.method1('a', arg2='c'))
         assertEqual('a:b', group.method1('a'))
-        wrap(group).method2('c').calls_original().x(1)
+        flex(group).method2('c').runs().times(1)
         assertEqual('c', group.method2('c'))
         self._tear_down()
 
@@ -511,11 +511,11 @@ class RegularClass(object):
                 return '%s:%s' % (arg1, arg2)
             def method2(self): pass
         group = Group()
-        wrap(group).method1.calls_original().x(1,-1)
+        flex(group).method1.runs().times(1, None)
         assertRaises(MethodNotCalled, self._tear_down)
-        wrap(group).method2('a').x(1)
-        wrap(group).method2('not a')
-        wrap(group).method2('not a')
+        flex(group).method2('a').times(1)
+        flex(group).method2('not a')
+        flex(group).method2('not a')
         assertRaises(MethodNotCalled, self._tear_down)
 
     def test_testutils_doesnt_error_on_properly_ordered_expectations(self):
@@ -524,11 +524,11 @@ class RegularClass(object):
             def method1(self): pass
             def bar(self): pass
             def baz(self): pass
-        wrap(Foo).foo
-        wrap(Foo).method1('a').ordered()
-        wrap(Foo).bar
-        wrap(Foo).method1('b').ordered()
-        wrap(Foo).baz
+        flex(Foo).foo
+        flex(Foo).method1('a').ordered()
+        flex(Foo).bar
+        flex(Foo).method1('b').ordered()
+        flex(Foo).baz
         Foo.bar()
         Foo.method1('a')
         Foo.method1('b')
@@ -541,10 +541,10 @@ class RegularClass(object):
             def method1(self): pass
             def bar(self): pass
             def baz(self): pass
-        wrap(Foo).foo
-        wrap(Foo).method1('a').ordered()
-        wrap(Foo).bar
-        wrap(Foo).method1('b').ordered()
+        flex(Foo).foo
+        flex(Foo).method1('a').ordered()
+        flex(Foo).bar
+        flex(Foo).method1('b').ordered()
         Foo.baz
         Foo.bar()
         Foo.bar()
@@ -555,7 +555,7 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1.returns(1, 5).returns(2)
+        flex(foo).method1.returns(1, 5).returns(2)
         assertEqual(1, foo.method1())
         assertEqual(5, foo.method1())
         assertEqual(2, foo.method1())
@@ -567,7 +567,7 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1.returns(1, 2)
+        flex(foo).method1.returns(1, 2)
         assertEqual(1, foo.method1())
         assertEqual(2, foo.method1())
         assertEqual(1, foo.method1())
@@ -577,7 +577,7 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1.returns(1).raises(Exception)
+        flex(foo).method1.returns(1).raises(Exception)
         assertEqual(1, foo.method1())
         assertRaises(Exception, foo.method1)
         assertEqual(1, foo.method1())
@@ -587,7 +587,7 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1(str, int).returns('ok')
+        flex(foo).method1(str, int).returns('ok')
         assertEqual('ok', foo.method1('some string', 12))
         assertRaises(InvalidMethodSignature, foo.method1, 12, 32)
         assertRaises(InvalidMethodSignature, foo.method1, 12, 'some string')
@@ -597,7 +597,7 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1(object, object, object).returns('ok')
+        flex(foo).method1(object, object, object).returns('ok')
         assertEqual('ok', foo.method1('some string', None, 12))
         assertEqual('ok', foo.method1((1,), None, 12))
         assertEqual('ok', foo.method1(12, 14, []))
@@ -611,7 +611,7 @@ class RegularClass(object):
         class Bar: pass
         foo = Foo()
         bar = Bar()
-        wrap(foo).method1(object, Bar).returns('ok')
+        flex(foo).method1(object, Bar).returns('ok')
         assertEqual('ok', foo.method1('some string', bar))
         assertRaises(InvalidMethodSignature, foo.method1, bar, 'some string')
         assertRaises(InvalidMethodSignature, foo.method1, 12, 'some string')
@@ -620,11 +620,11 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        wrap(foo).method1(1, arg3=3, arg2=2).x(2)
+        flex(foo).method1(1, arg3=3, arg2=2).times(2)
         foo.method1(1, arg2=2, arg3=3)
         foo.method1(1, arg3=3, arg2=2)
         self._tear_down()
-        wrap(foo).method1(1, arg3=3, arg2=2)
+        flex(foo).method1(1, arg3=3, arg2=2)
         assertRaises(InvalidMethodSignature, foo.method1, arg2=2, arg3=3)
         assertRaises(InvalidMethodSignature, foo.method1, 1, arg2=2, arg3=4)
         assertRaises(InvalidMethodSignature, foo.method1, 1)
@@ -634,7 +634,7 @@ class RegularClass(object):
             def method1(self, arg1, arg2=None, arg3=None):
                 return '%s%s%s' % (arg1, arg2, arg3)
         foo = Foo()
-        wrap(foo).method1(1, arg3=3, arg2=2).calls_original().x(1)
+        flex(foo).method1(1, arg3=3, arg2=2).runs().times(1)
         assertEqual('123', foo.method1(1, arg2=2, arg3=3))
 
     def test_testutils_should_mock_private_methods(self):
@@ -644,7 +644,7 @@ class RegularClass(object):
             def public_method(self):
                 return self.__private_method()
         foo = Foo()
-        wrap(foo)._Foo__private_method.returns('bar')
+        flex(foo)._Foo__private_method.returns('bar')
         assertEqual('bar', foo.public_method())
 
     def test_testutils_should_mock_private_special_methods(self):
@@ -654,7 +654,7 @@ class RegularClass(object):
             def public_method(self):
                 return self.__private_special_method__()
         foo = Foo()
-        wrap(foo).__private_special_method__.returns('bar')
+        flex(foo).__private_special_method__.returns('bar')
         assertEqual('bar', foo.public_method())
 
     def test_testutils_should_mock_double_underscore_method(self):
@@ -664,20 +664,20 @@ class RegularClass(object):
             def public_method(self):
                 return self.__()
         foo = Foo()
-        wrap(foo).__.returns('bar')
+        flex(foo).__.returns('bar')
         assertEqual('bar', foo.public_method())
 
     def test_testutils_should_mock_private_class_methods(self):
         class Foo:
             def __iter__(self): pass
-        wrap(Foo).__iter__.yields(1, 2, 3)
+        flex(Foo).__iter__.yields(1, 2, 3)
         assertEqual([1, 2, 3], [x for x in Foo()])
 
     def test_testutils_should_mock_generators(self):
         class Gen:
             def foo(self): pass
         gen = Gen()
-        wrap(gen).foo.yields(*range(1, 10))
+        flex(gen).foo.yields(*range(1, 10))
         output = [val for val in gen.foo()]
         assertEqual([val for val in range(1, 10)], output)
 
@@ -685,14 +685,14 @@ class RegularClass(object):
         class User:
             def get_stuff(self): return 'real', 'stuff'
         user = User()
-        wrap(user).get_stuff.calls_original().returns(('real', 'stuff'))
+        flex(user).get_stuff.runs().returns(('real', 'stuff'))
         assertEqual(('real', 'stuff'), user.get_stuff())
 
     def test_testutils_should_verify_correct_spy_regexp_return_values(self):
         class User:
             def get_stuff(self): return 'real', 'stuff'
         user = User()
-        wrap(user).get_stuff.calls_original().returns(
+        flex(user).get_stuff.runs().returns(
                 (re.compile('ea.*'), re.compile('^stuff$')))
         assertEqual(('real', 'stuff'), user.get_stuff())
 
@@ -704,7 +704,7 @@ class RegularClass(object):
         class User:
             def get_stuff(self): raise FakeException(1, 2)
         user = User()
-        wrap(user).get_stuff.calls_original().raises(FakeException, 1, 2)
+        flex(user).get_stuff.runs().raises(FakeException, 1, 2)
         user.get_stuff()
 
     def test_testutils_should_verify_spy_matches_exception_message(self):
@@ -718,14 +718,14 @@ class RegularClass(object):
         class User:
             def get_stuff(self): raise FakeException('1', '2')
         user = User()
-        wrap(user).get_stuff.calls_original().raises(FakeException, '2', '1')
+        flex(user).get_stuff.runs().raises(FakeException, '2', '1')
         assertRaises(InvalidExceptionMessage, user.get_stuff)
 
     def test_testutils_should_verify_spy_matches_exception_regexp(self):
         class User:
             def get_stuff(self): raise Exception('123asdf345')
         user = User()
-        wrap(user).get_stuff.calls_original().raises(
+        flex(user).get_stuff.runs().raises(
                 Exception, re.compile('asdf'))
         user.get_stuff()
         self._tear_down()
@@ -734,7 +734,7 @@ class RegularClass(object):
         class User:
             def get_stuff(self): raise Exception('123asdf345')
         user = User()
-        wrap(user).get_stuff.calls_original().raises(
+        flex(user).get_stuff.runs().raises(
                 Exception, re.compile('^asdf'))
         assertRaises(InvalidExceptionMessage, user.get_stuff)
 
@@ -742,14 +742,14 @@ class RegularClass(object):
         class User:
             def get_stuff(self): raise Exception('foo')
         user = User()
-        wrap(user).get_stuff.calls_original().raises(MethodNotCalled)
+        flex(user).get_stuff.runs().raises(MethodNotCalled)
         assertRaises(InvalidExceptionClass, user.get_stuff)
 
     def test_testutils_should_match_spy_exception_parent_type(self):
         class User:
             def get_stuff(self): raise MethodNotCalled('foo')
         user = User()
-        wrap(user).get_stuff.calls_original().raises(TestutilsError)
+        flex(user).get_stuff.runs().raises(TestutilsError)
         user.get_stuff()
 
     def test_testutils_should_blow_up_on_wrong_spy_return_values(self):
@@ -757,22 +757,22 @@ class RegularClass(object):
             def get_stuff(self): return 'real', 'stuff'
             def get_more_stuff(self): return 'other', 'stuff'
         user = User()
-        wrap(user).get_stuff.calls_original().returns(('other', 'stuff'))
+        flex(user).get_stuff.runs().returns(('other', 'stuff'))
         assertRaises(InvalidMethodSignature, user.get_stuff)
-        wrap(user).get_more_stuff.calls_original().returns()
+        flex(user).get_more_stuff.runs().returns()
         assertRaises(InvalidMethodSignature, user.get_more_stuff)
 
     def test_testutils_should_mock_same_class_twice(self):
         class Foo: pass
-        wrap(Foo)
-        wrap(Foo)
+        flex(Foo)
+        flex(Foo)
 
     def test_testutils_spy_should_not_clobber_original_method(self):
         class User:
             def get_stuff(self): return 'real', 'stuff'
         user = User()
-        wrap(user).get_stuff.calls_original()
-        wrap(user).get_stuff.calls_original()
+        flex(user).get_stuff.runs()
+        flex(user).get_stuff.runs()
         assertEqual(('real', 'stuff'), user.get_stuff())
 
     def test_testutils_should_properly_restore_static_methods(self):
@@ -780,7 +780,7 @@ class RegularClass(object):
             @staticmethod
             def get_stuff(): return 'ok!'
         assertEqual('ok!', User.get_stuff())
-        wrap(User).get_stuff
+        flex(User).get_stuff
         assert User.get_stuff() is None
         self._tear_down()
         assertEqual('ok!', User.get_stuff())
@@ -790,7 +790,7 @@ class RegularClass(object):
             def get_stuff(): return 'ok!'
             get_stuff = staticmethod(get_stuff)
         assertEqual('ok!', User.get_stuff())
-        wrap(User).get_stuff
+        flex(User).get_stuff
         assert User.get_stuff() is None
         self._tear_down()
         assertEqual('ok!', User.get_stuff())
@@ -800,7 +800,7 @@ class RegularClass(object):
             mod = sys.modules['testutils_test']
         else:
             mod = sys.modules['__main__']
-        wrap(mod).module_level_function
+        flex(mod).module_level_function
         assertEqual(None,    module_level_function(1, 2))
         self._tear_down()
         assertEqual('1, 2', module_level_function(1, 2))
@@ -811,7 +811,7 @@ class RegularClass(object):
             def get_stuff(cls):
                 return cls.__name__
         assertEqual('User', User.get_stuff())
-        wrap(User).get_stuff.returns('foo')
+        flex(User).get_stuff.returns('foo')
         assertEqual('foo', User.get_stuff())
         self._tear_down()
         assertEqual('User', User.get_stuff())
@@ -825,11 +825,11 @@ class RegularClass(object):
             def baz(self): return None
             def bax(self): return None
         foo = Foo()
-        mock = wrap(foo)
-        mock.foo.calls_original().returns((str, str))
-        mock.bar.calls_original().returns(User)
-        mock.baz.calls_original().returns(object)
-        mock.bax.calls_original().returns(None)
+        mock = flex(foo)
+        mock.foo.runs().returns((str, str))
+        mock.bar.runs().returns(User)
+        mock.baz.runs().returns(object)
+        mock.bax.runs().returns(None)
         assertEqual(('bar', 'baz'), foo.foo())
         assertEqual(user, foo.bar())
         assertEqual(None, foo.baz())
@@ -839,7 +839,7 @@ class RegularClass(object):
         class User: pass
         user = User()
         try:
-            wrap(user).nonexistent()
+            flex(user).nonexistent()
             raise Exception('failed to raise MethodDoesNotExist')
         except MethodDoesNotExist:
             pass
@@ -874,7 +874,7 @@ class RegularClass(object):
             def method(self):
                     self.n += 1
         obj = Nyan()
-        wrap(obj).method.calls_original()
+        flex(obj).method.runs()
         obj.method()
         assertEqual(obj.n, 1)
     
@@ -883,8 +883,8 @@ class RegularClass(object):
             def method(self, arg):
                 pass
         foo = Foo()
-        wrap(foo).method('foo').calls_original().x(1)
-        wrap(foo).method('bar').calls_original().x(1)
+        flex(foo).method('foo').runs().times(1)
+        flex(foo).method('bar').runs().times(1)
         foo.method('foo')
         foo.method('bar')
         self._tear_down()
@@ -894,14 +894,14 @@ class RegularClass(object):
             def method(self, arg):
                 pass
         foo = Foo()
-        wrap(foo).method('foo').calls_original().x(1)
-        wrap(foo).method('bar').calls_original().x(1)
+        flex(foo).method('foo').runs().times(1)
+        flex(foo).method('bar').runs().times(1)
         foo.method('foo')
         assertRaises(MethodNotCalled, self._tear_down)
 
     def test_should_give_reasonable_error_for_builtins(self):
         try:
-            wrap(dict).keys
+            flex(dict).keys
             raise Exception('AttemptingToMockBuiltin not raised')
         except AttemptingToMockBuiltin:
             pass
@@ -909,7 +909,7 @@ class RegularClass(object):
     def test_should_give_reasonable_error_for_instances_of_builtins(self):
         d = dict()
         try:
-            wrap(d).keys
+            flex(d).keys
             raise Exception('AttemptingToMockBuiltin not raised')
         except AttemptingToMockBuiltin:
             pass
@@ -919,7 +919,7 @@ class RegularClass(object):
             def method(self, arg):
                 return arg
         foo = Foo()
-        wrap(foo).method.calls(lambda x: x == 5)
+        flex(foo).method.runs(lambda x: x == 5)
         assertEqual(foo.method(5), True)
         assertEqual(foo.method(4), False)
 
@@ -928,26 +928,26 @@ class RegularClass(object):
             def method(self, arg):
                 return arg
         foo = Foo()
-        expectation = wrap(foo).method.calls(lambda x: x == 5)
+        expectation = flex(foo).method.runs(lambda x: x == 5)
         assertRaises(TestutilsError,
-                                 expectation.calls, lambda x: x == 3)
+                                 expectation.runs, lambda x: x == 3)
 
     def test_testutils_should_mock_the_same_method_multiple_times(self):
         class Foo:
             def method(self): pass
         foo = Foo()
-        wrap(foo).method.returns(1)
+        flex(foo).method.returns(1)
         assertEqual(foo.method(), 1)
-        wrap(foo).method.returns(2)
+        flex(foo).method.returns(2)
         assertEqual(foo.method(), 2)
-        wrap(foo).method.returns(3)
+        flex(foo).method.returns(3)
         assertEqual(foo.method(), 3)
-        wrap(foo).method.returns(4)
+        flex(foo).method.returns(4)
         assertEqual(foo.method(), 4)
 
     def test_new_instances_should_be_a_method(self):
         class Foo(object): pass
-        wrap(Foo).__new__.returns('bar')
+        flex(Foo).__new__.returns('bar')
         assertEqual('bar', Foo())
         self._tear_down()
         assert 'bar' != Foo()
@@ -956,14 +956,14 @@ class RegularClass(object):
         class Foo(object): pass
         foo = Foo()
         try:
-            mock = wrap(foo).__new__.returns('bar')
+            mock = flex(foo).__new__.returns('bar')
             raise Exception('TestutilsError not raised')
         except TestutilsError:
             pass
 
     def test_new_instances_works_with_multiple_return_values(self):
         class Foo(object): pass
-        wrap(Foo).__new__.returns('foo', 'bar')
+        flex(Foo).__new__.returns('foo', 'bar')
         assertEqual('foo', Foo())
         assertEqual('bar', Foo())
 
@@ -973,8 +973,8 @@ class RegularClass(object):
         class Child(Parent):
             def bar(self): pass
 
-        wrap(Parent).foo.returns('outer')
-        wrap(Child).bar.returns('inner')
+        flex(Parent).foo.returns('outer')
+        flex(Child).bar.returns('inner')
         assert 'outer', Parent().foo()
         assert 'inner', Child().bar()
 
@@ -982,7 +982,7 @@ class RegularClass(object):
         class Foo:
             def foo(arg1, arg2): pass
         foo = Foo()
-        wrap(foo).foo(
+        flex(foo).foo(
             re.compile('^arg1.*asdf$'), arg2=re.compile('f')).returns('mocked')
         assertEqual('mocked', foo.foo('arg1somejunkasdf', arg2='aadsfdas'))
 
@@ -990,7 +990,7 @@ class RegularClass(object):
         class Foo:
             def foo(arg1, arg2): pass
         foo = Foo()
-        wrap(foo).foo(
+        flex(foo).foo(
             re.compile('^arg1.*asdf$'), arg2=re.compile('a')).returns('mocked')
         assertRaises(InvalidMethodSignature,
                      foo.foo, 'arg1somejunkasdfa', arg2='a')
@@ -999,31 +999,31 @@ class RegularClass(object):
         class Foo:
             def foo(arg1, arg2): pass
         foo = Foo()
-        wrap(foo).foo(
+        flex(foo).foo(
             re.compile('^arg1.*asdf$'), arg2=re.compile('a')).returns('mocked')
         assertRaises(InvalidMethodSignature,
             foo.foo, 'arg1somejunkasdf', arg2='b')
 
     def test_testutils_class_returns_same_object_on_repeated_calls(self):
         class Foo: pass
-        a = wrap(Foo)
-        b = wrap(Foo)
+        a = flex(Foo)
+        b = flex(Foo)
         assertEqual(a, b)
 
     def test_testutils_object_returns_same_object_on_repeated_calls(self):
         class Foo: pass
         foo = Foo()
-        a = wrap(foo)
-        b = wrap(foo)
+        a = flex(foo)
+        b = flex(foo)
         assertEqual(a, b)
 
     def test_testutils_ordered_worked_after_default_stub(self):
         class Foo:
             def bar(self): pass
         foo = Foo()
-        wrap(foo).bar
-        wrap(foo).bar('a').ordered()
-        wrap(foo).bar('b').ordered()
+        flex(foo).bar
+        flex(foo).bar('a').ordered()
+        flex(foo).bar('b').ordered()
         assertRaises(MethodCalledOutOfOrder, foo.bar, 'b')
 
     def test_fake_object_takes_any_attribute(self):
@@ -1039,9 +1039,9 @@ class RegularClass(object):
             def adjust_volume(self, num): self.volume = num
 
         radio = Radio()
-        mock = wrap(radio)
-        mock.select_channel.x(1).when(lambda: radio.is_on)
-        mock.adjust_volume(5).calls_original().x(1).when(lambda: radio.is_on)
+        mock = flex(radio)
+        mock.select_channel.times(1).when(lambda: radio.is_on)
+        mock.adjust_volume(5).runs().times(1).when(lambda: radio.is_on)
 
         assertRaises(InvalidState, radio.select_channel)
         assertRaises(InvalidState, radio.adjust_volume, 5)
@@ -1054,20 +1054,20 @@ class RegularClass(object):
             def bar(self): pass
 
         foo = Foo()
-        wrap(foo).bar.calls_original().x(1,2)
+        flex(foo).bar.runs().times(1, 2)
         assertRaises(MethodNotCalled, self._tear_down)
 
-        wrap(foo).bar.calls_original().x(1,2)
+        flex(foo).bar.runs().times(1, 2)
         foo.bar()
         foo.bar()
         foo.bar()
         assertRaises(MethodNotCalled, self._tear_down)
 
-        wrap(foo).bar.calls_original().x(1,2)
+        flex(foo).bar.runs().times(1, 2)
         foo.bar()
         self._tear_down()
 
-        wrap(foo).bar.calls_original().x(1,2)
+        flex(foo).bar.runs().times(1, 2)
         foo.bar()
         foo.bar()
         self._tear_down()
@@ -1100,7 +1100,7 @@ class TestTestutilsUnittest(RegularClass, unittest.TestCase):
         pass
 
     def _tear_down(self):
-        return _teardown()
+        return verify()
 
 
 if sys.version_info >= (2, 6):

@@ -114,25 +114,24 @@ class Expectation(object):
             self.return_values.append(ReturnValue(value))
         return self
 
-    def x(self, number, at_most=None):
+    def times(self, start, end=0):
         """Number of times this expectation's method is expected to be called.
 
         Args:
-            - number: int
+            - start: int
+            - end: int
 
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
         expected_calls = self.expected_calls
-        if number < 0:
-            number = 0
-        if at_most == None:
-            expected_calls[EXACTLY] = number
-        elif at_most < number:
-            expected_calls[AT_LEAST] = number
+        if end is None:
+            expected_calls[AT_LEAST] = start
+        elif end <= start:
+            expected_calls[EXACTLY] = start
         else:
-            expected_calls[AT_LEAST] = number
-            expected_calls[AT_MOST] = at_most
+            expected_calls[AT_LEAST] = start
+            expected_calls[AT_MOST] = end
         return self
 
     def ordered(self):
@@ -175,15 +174,17 @@ class Expectation(object):
         return_values.append(ReturnValue(raises=exception, value=args))
         return self
 
-    def calls(self, function):
+    def runs(self, function=None):
         """Gives a function to run instead of the mocked out one.
 
         Args:
-            - function: callable
+            - function: callable (defaults to function being replaced)
 
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
+        if not function:
+          function = self.original_method
         replace_with = self._replace_with
         original_method = self.original_method
         if replace_with:
@@ -198,9 +199,6 @@ class Expectation(object):
             self._pass_thru = True
         self._replace_with = function
         return self
-
-    def calls_original(self):
-            return self.calls(self.original_method)
 
     def yields(self, *values):
         """Turns the return value into a generator.

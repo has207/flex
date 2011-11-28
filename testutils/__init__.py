@@ -30,7 +30,7 @@ from testutils.wrap import _testutils_objects
 from testutils.wrap import Wrap
 
 
-def wrap(spec, **kwargs):
+def flex(spec, **kwargs):
     """Wraps an object in order to manipulate its methods.
  
     Examples:
@@ -60,7 +60,7 @@ def fake(**kwargs):
     return Fake(**kwargs)
 
 
-def _teardown():
+def verify():
     """Performs testuitls-specific teardown tasks."""
  
     saved = {}
@@ -86,7 +86,7 @@ def _hook_into_pytest():
         saved = runner.call_runtest_hook
         def call_runtest_hook(item, when):
             ret = saved(item, when)
-            teardown = runner.CallInfo(_teardown, when=when)
+            teardown = runner.CallInfo(verify, when=when)
             if when == 'call' and not ret.excinfo:
                 teardown.result = None
                 return teardown
@@ -107,7 +107,7 @@ def _hook_into_doctest():
             try:
                 return saved(self, test, compileflags, out, clear_globs)
             finally:
-                _teardown()
+                verify()
         DocTestRunner.run = run
     except ImportError:
         pass
@@ -119,7 +119,7 @@ def _update_unittest(klass):
     saved_addSuccess = klass.addSuccess
     def stopTest(self, test):
         try:
-            _teardown()
+            verify()
             saved_addSuccess(self, test)
         except:
             if hasattr(self, '_pre_testutils_success'):

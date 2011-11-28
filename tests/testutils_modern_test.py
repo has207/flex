@@ -1,5 +1,5 @@
 import sys
-from testutils import fake, wrap
+from testutils import fake, flex
 import unittest
 
 class ModernClass(object):
@@ -12,19 +12,18 @@ class ModernClass(object):
 
     def test_builtin_open(self):
         if sys.version_info < (3, 0):
-            mock = wrap(sys.modules['__builtin__'])
+            mock = flex(sys.modules['__builtin__'])
         else:
-            mock = wrap(sys.modules['builtins'])
-        mock.open.calls_original()
-        mock.open('file_name').x(1).returns(fake(read=lambda: 'some data'))
+            mock = flex(sys.modules['builtins'])
+        mock.open.runs()
+        mock.open('file_name').returns(fake(read=lambda: 'some data')).times(1)
         with open('file_name') as f:
             data = f.read()
         self.assertEqual('some data', data)
 
 
 class TestutilsUnittestModern(ModernClass, unittest.TestCase):
-    def _tear_down(self):
-        return unittest.TestCase.tearDown(self)
+    pass
 
 
 if __name__ == '__main__':
