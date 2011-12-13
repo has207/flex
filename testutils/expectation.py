@@ -1,25 +1,25 @@
 """Copyright 2011 Herman Sheremetyev. All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, are
-permitted provided that the following conditions are met:
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
 
-   1. Redistributions of source code must retain the above copyright notice, this list of
-      conditions and the following disclaimer.
+   1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
 
-   2. Redistributions in binary form must reproduce the above copyright notice, this list
-      of conditions and the following disclaimer in the documentation and/or other materials
-      provided with the distribution.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
 from testutils.exceptions import *
@@ -59,11 +59,14 @@ class Expectation(object):
         self.original_method = original_method
         self.args = None
         value = ReturnValue(return_value)
-        self.return_values = return_values = []
-        self._replace_with = None
+        self._action = {
+            'return_values': [],
+            'yield_values': []
+        }
+        return_values = self._action['return_values']
         if return_value is not None:
             return_values.append(value)
-        self.yield_values = []
+        self._replace_with = None
         self.times_called = 0
         self.expected_calls = {EXACTLY: None, AT_LEAST: None, AT_MOST: None}
         self.runnable = lambda: True
@@ -74,7 +77,7 @@ class Expectation(object):
     def __str__(self):
         return ('%s -> (%s)' %
                 (_format_args(self.method, self.args),
-                ', '.join(['%s' % x for x in self.return_values])))
+                ', '.join(['%s' % x for x in self._action['return_values']])))
 
     def __call__(self, *kargs, **kwargs):
         if self.args:
@@ -108,10 +111,77 @@ class Expectation(object):
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
+        replace_with = self._replace_with
+        if replace_with:
+            raise TestutilsError('returns() cannot be specified after runs()')
+        return_values = self._action['return_values']
         if not values:
-            self.return_values.append(ReturnValue())
+            return_values.append(ReturnValue())
         for value in values:
-            self.return_values.append(ReturnValue(value))
+            return_values.append(ReturnValue(value))
+        return self
+
+    def raises(self, exception, *kargs, **kwargs):
+        """Specifies the exception to be raised when this expectation is met.
+
+        Args:
+            - exception: class or instance of the exception
+            - kargs: optional keyword arguments to pass to the exception
+            - kwargs: optional named arguments to pass to the exception
+
+        Returns:
+            - self, i.e. can be chained with other Expectation methods
+        """
+        replace_with = self._replace_with
+        if replace_with:
+            raise TestutilsError('raises() cannot be specified after runs()')
+        args = {'kargs': kargs, 'kwargs': kwargs}
+        return_values = self._action['return_values']
+        return_values.append(ReturnValue(raises=exception, value=args))
+        return self
+
+    def yields(self, *values):
+        """Turns the return value into a generator.
+
+        Each value provided is yielded on successive calls to next().
+
+        Returns:
+            - self, i.e. can be chained with other Expectation methods
+        """
+        replace_with = self._replace_with
+        if replace_with:
+            raise TestutilsError('yields() cannot be specified after runs()')
+        yield_values = self._action['yield_values']
+        for value in values:
+            yield_values.append(ReturnValue(value))
+        return self
+
+    def runs(self, function=None):
+        """Gives a function to run instead of the mocked out one.
+
+        Args:
+            - function: callable (defaults to function being replaced)
+
+        Returns:
+            - self, i.e. can be chained with other Expectation methods
+        """
+        if any(val for _, val in self._action.items()):
+          raise TestutilsError('runs() cannot be mixed with return values')
+        if not function:
+          function = self.original_method
+        replace_with = self._replace_with
+        original_method = self.original_method
+        if replace_with:
+            raise TestutilsError('runs() cannot be specified twice')
+        mock = self._mock
+        obj = object.__getattribute__(mock, '__object__')
+        func_type = type(function)
+        if _isclass(obj):
+            if func_type is not classmethod and func_type is not staticmethod:
+                raise TestutilsError('calls() cannot be used on a class mock')
+        if function == original_method:
+            self._pass_thru = True
+        self._replace_with = function
         return self
 
     def times(self, start, end=0):
@@ -156,61 +226,6 @@ class Expectation(object):
             - self, i.e. can be chained with other Expectation methods
         """
         self.runnable = func
-        return self
-
-    def raises(self, exception, *kargs, **kwargs):
-        """Specifies the exception to be raised when this expectation is met.
-
-        Args:
-            - exception: class or instance of the exception
-            - kargs: optional keyword arguments to pass to the exception
-            - kwargs: optional named arguments to pass to the exception
-
-        Returns:
-            - self, i.e. can be chained with other Expectation methods
-        """
-        args = {'kargs': kargs, 'kwargs': kwargs}
-        return_values = self.return_values
-        return_values.append(ReturnValue(raises=exception, value=args))
-        return self
-
-    def runs(self, function=None):
-        """Gives a function to run instead of the mocked out one.
-
-        Args:
-            - function: callable (defaults to function being replaced)
-
-        Returns:
-            - self, i.e. can be chained with other Expectation methods
-        """
-        if not function:
-          function = self.original_method
-        replace_with = self._replace_with
-        original_method = self.original_method
-        if replace_with:
-            raise TestutilsError('calls() cannot be specified twice')
-        mock = self._mock
-        obj = object.__getattribute__(mock, '__object__')
-        func_type = type(function)
-        if _isclass(obj):
-            if func_type is not classmethod and func_type is not staticmethod:
-                raise TestutilsError('calls() cannot be used on a class mock')
-        if function == original_method:
-            self._pass_thru = True
-        self._replace_with = function
-        return self
-
-    def yields(self, *values):
-        """Turns the return value into a generator.
-        
-        Each value provided is yielded on successive calls to next().
-
-        Returns:
-            - self, i.e. can be chained with other Expectation methods
-        """
-        yield_values = self.yield_values
-        for value in values:
-            yield_values.append(ReturnValue(value))
         return self
 
     def _verify(self):

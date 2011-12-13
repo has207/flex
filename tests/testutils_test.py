@@ -577,11 +577,13 @@ class RegularClass(object):
         class Foo:
             def method1(self): pass
         foo = Foo()
-        flex(foo).method1.returns(1).raises(Exception)
+        flex(foo).method1.returns(1).raises(Exception).returns(2)
         assertEqual(1, foo.method1())
         assertRaises(Exception, foo.method1)
+        assertEqual(2, foo.method1())
         assertEqual(1, foo.method1())
         assertRaises(Exception, foo.method1)
+        assertEqual(2, foo.method1())
 
     def test_testutils_should_match_types_on_multiple_arguments(self):
         class Foo:
@@ -681,87 +683,6 @@ class RegularClass(object):
         output = [val for val in gen.foo()]
         assertEqual([val for val in range(1, 10)], output)
 
-    def test_testutils_should_verify_correct_spy_return_values(self):
-        class User:
-            def get_stuff(self): return 'real', 'stuff'
-        user = User()
-        flex(user).get_stuff.runs().returns(('real', 'stuff'))
-        assertEqual(('real', 'stuff'), user.get_stuff())
-
-    def test_testutils_should_verify_correct_spy_regexp_return_values(self):
-        class User:
-            def get_stuff(self): return 'real', 'stuff'
-        user = User()
-        flex(user).get_stuff.runs().returns(
-                (re.compile('ea.*'), re.compile('^stuff$')))
-        assertEqual(('real', 'stuff'), user.get_stuff())
-
-    def test_testutils_should_verify_spy_raises_correct_exception_class(self):
-        class FakeException(Exception):
-            def __init__(self, param, param2):
-                self.message = '%s, %s' % (param, param2)
-                Exception.__init__(self)
-        class User:
-            def get_stuff(self): raise FakeException(1, 2)
-        user = User()
-        flex(user).get_stuff.runs().raises(FakeException, 1, 2)
-        user.get_stuff()
-
-    def test_testutils_should_verify_spy_matches_exception_message(self):
-        class FakeException(Exception):
-            def __init__(self, param, param2):
-                self.p1 = param
-                self.p2 = param2
-                Exception.__init__(self, param)
-            def __str__(self):
-                return '%s, %s' % (self.p1, self.p2)
-        class User:
-            def get_stuff(self): raise FakeException('1', '2')
-        user = User()
-        flex(user).get_stuff.runs().raises(FakeException, '2', '1')
-        assertRaises(InvalidExceptionMessage, user.get_stuff)
-
-    def test_testutils_should_verify_spy_matches_exception_regexp(self):
-        class User:
-            def get_stuff(self): raise Exception('123asdf345')
-        user = User()
-        flex(user).get_stuff.runs().raises(
-                Exception, re.compile('asdf'))
-        user.get_stuff()
-        self._tear_down()
-
-    def test_should_verify_spy_matches_exception_regexp_mismatch(self):
-        class User:
-            def get_stuff(self): raise Exception('123asdf345')
-        user = User()
-        flex(user).get_stuff.runs().raises(
-                Exception, re.compile('^asdf'))
-        assertRaises(InvalidExceptionMessage, user.get_stuff)
-
-    def test_testutils_should_blow_up_on_wrong_spy_exception_type(self):
-        class User:
-            def get_stuff(self): raise Exception('foo')
-        user = User()
-        flex(user).get_stuff.runs().raises(MethodNotCalled)
-        assertRaises(InvalidExceptionClass, user.get_stuff)
-
-    def test_testutils_should_match_spy_exception_parent_type(self):
-        class User:
-            def get_stuff(self): raise MethodNotCalled('foo')
-        user = User()
-        flex(user).get_stuff.runs().raises(TestutilsError)
-        user.get_stuff()
-
-    def test_testutils_should_blow_up_on_wrong_spy_return_values(self):
-        class User:
-            def get_stuff(self): return 'real', 'stuff'
-            def get_more_stuff(self): return 'other', 'stuff'
-        user = User()
-        flex(user).get_stuff.runs().returns(('other', 'stuff'))
-        assertRaises(InvalidMethodSignature, user.get_stuff)
-        flex(user).get_more_stuff.runs().returns()
-        assertRaises(InvalidMethodSignature, user.get_more_stuff)
-
     def test_testutils_should_mock_same_class_twice(self):
         class Foo: pass
         flex(Foo)
@@ -816,25 +737,6 @@ class RegularClass(object):
         self._tear_down()
         assertEqual('User', User.get_stuff())
 
-    def test_spy_should_match_return_value_class(self):
-        class User: pass
-        user = User()
-        class Foo:
-            def foo(self): return 'bar', 'baz'
-            def bar(self): return user
-            def baz(self): return None
-            def bax(self): return None
-        foo = Foo()
-        mock = flex(foo)
-        mock.foo.runs().returns((str, str))
-        mock.bar.runs().returns(User)
-        mock.baz.runs().returns(object)
-        mock.bax.runs().returns(None)
-        assertEqual(('bar', 'baz'), foo.foo())
-        assertEqual(user, foo.bar())
-        assertEqual(None, foo.baz())
-        assertEqual(None, foo.bax())
-
     def test_testutils_should_fail_mocking_nonexistent_methods(self):
         class User: pass
         user = User()
@@ -843,7 +745,6 @@ class RegularClass(object):
             raise Exception('failed to raise MethodDoesNotExist')
         except MethodDoesNotExist:
             pass
-
 
     def test_testutils_should_not_explode_on_unicode_formatting(self):
         if sys.version_info >= (3, 0):

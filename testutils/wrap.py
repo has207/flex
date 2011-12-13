@@ -1,25 +1,25 @@
 """Copyright 2011 Herman Sheremetyev. All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, are
-permitted provided that the following conditions are met:
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
 
-   1. Redistributions of source code must retain the above copyright notice, this list of
-      conditions and the following disclaimer.
+   1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
 
-   2. Redistributions in binary form must reproduce the above copyright notice, this list
-      of conditions and the following disclaimer in the documentation and/or other materials
-      provided with the distribution.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
 import inspect
@@ -141,74 +141,18 @@ class Wrap(object):
             for value in yield_values:
                 yield value.value
 
-        def _handle_exception_matching(expectation):
-            return_values = expectation.return_values
-            if return_values:
-                raised, instance = sys.exc_info()[:2]
-                message = '%s' % instance
-                expected = return_values[0].raises
-                if not expected:
-                    raise
-                args = return_values[0].value
-                expected_instance = expected(*args['kargs'], **args['kwargs'])
-                expected_message = '%s' % expected_instance
-                if _isclass(expected):
-                    if (expected is not raised and
-                        expected not in raised.__bases__):
-                        raise (InvalidExceptionClass('expected %s, raised %s' %
-                                     (expected, raised)))
-                    if (args['kargs'] and
-                        '_sre.SRE_Pattern' in str(args['kargs'][0])):
-                        if not args['kargs'][0].search(message):
-                            raise (InvalidExceptionMessage(
-                                'expected /%s/, raised "%s"' %
-                                (args['kargs'][0].pattern, message)))
-                    elif expected_message and expected_message != message:
-                        raise (InvalidExceptionMessage(
-                            'expected "%s", raised "%s"' %
-                            (expected_message, message)))
-                elif expected is not raised:
-                    raise (InvalidExceptionClass('expected "%s", raised "%s"' %
-                                 (expected, raised)))
-            else:
-                raise
-
-        def match_return_values(expected, received):
-            if not received:
-                return True
-            if not isinstance(expected, tuple):
-                expected = (expected,)
-            if not isinstance(received, tuple):
-                received = (received,)
-            if len(received) != len(expected):
-                return False
-            for i, val in enumerate(received):
-                if not _arguments_match(val, expected[i]):
-                    return False
-            return True
-
         def pass_thru(expectation, *kargs, **kwargs):
             return_values = None
-            try:
-                original_method = expectation.original_method
-                _mock = expectation._mock
-                obj = object.__getattribute__(_mock, '__object__')
-                if _isclass(obj):
-                    if (type(original_method) is classmethod or
-                            type(original_method) is staticmethod):
-                        original = expectation.original_function
-                        return_values = original(*kargs, **kwargs)
-                else:
-                    return_values = original_method(*kargs, **kwargs)
-            except:
-                return _handle_exception_matching(expectation)
-            expected_values = expectation.return_values
-            if (expected_values and
-                    not match_return_values(expected_values[0].value,
-                                            return_values)):
-                raise (InvalidMethodSignature(
-                    'expected to return %s, returned %s' %
-                    (expected_values[0].value, return_values)))
+            original_method = expectation.original_method
+            _mock = expectation._mock
+            obj = object.__getattribute__(_mock, '__object__')
+            if _isclass(obj):
+                if (type(original_method) is classmethod or
+                        type(original_method) is staticmethod):
+                    original = expectation.original_function
+                    return_values = original(*kargs, **kwargs)
+            else:
+                return_values = original_method(*kargs, **kwargs)
             return return_values
 
         def mock_method(runtime_self, *kargs, **kwargs):
@@ -226,8 +170,8 @@ class Wrap(object):
                     return pass_thru(expectation, *kargs, **kwargs)
                 elif _replace_with:
                     return _replace_with(*kargs, **kwargs)
-                yield_values = expectation.yield_values
-                return_values = expectation.return_values
+                yield_values = expectation._action['yield_values']
+                return_values = expectation._action['return_values']
                 if yield_values:
                     return generator_method(yield_values)
                 elif return_values:
