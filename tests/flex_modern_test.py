@@ -1,11 +1,11 @@
 import sys
-from testutils import fake, flex
+from flex import fake, flex
 import unittest
 
 class ModernClass(object):
     """Contains features only available in 2.6 and above."""
 
-    def test_testutils_should_support_with(self):
+    def test_flex_should_support_with(self):
         foo = fake(foo='bar')
         with foo as mock:
             assert mock.bar() == 'baz'
@@ -22,7 +22,7 @@ class ModernClass(object):
         self.assertEqual('some data', data)
 
 
-class TestutilsUnittestModern(ModernClass, unittest.TestCase):
+class FlexUnittestModern(ModernClass, unittest.TestCase):
     pass
 
 

@@ -22,37 +22,37 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
-class TestutilsError(Exception):
+class FlexError(Exception):
     pass
 
 
-class AttemptingToMockBuiltin(TestutilsError):
+class AttemptingToMockBuiltin(FlexError):
     pass
 
 
-class InvalidMethodSignature(TestutilsError):
+class InvalidMethodSignature(FlexError):
     pass
 
 
-class InvalidExceptionClass(TestutilsError):
+class InvalidExceptionClass(FlexError):
     pass
 
 
-class InvalidExceptionMessage(TestutilsError):
+class InvalidExceptionMessage(FlexError):
     pass
 
 
-class InvalidState(TestutilsError):
+class InvalidState(FlexError):
     pass
 
 
-class MethodNotCalled(TestutilsError):
+class MethodNotCalled(FlexError):
     pass
 
 
-class MethodCalledOutOfOrder(TestutilsError):
+class MethodCalledOutOfOrder(FlexError):
     pass
 
 
-class MethodDoesNotExist(TestutilsError):
+class MethodDoesNotExist(FlexError):
     pass

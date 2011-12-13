@@ -26,17 +26,17 @@ import inspect
 import sys
 import types
 
-from testutils.helpers import _arguments_match
-from testutils.helpers import _isclass
-from testutils.helpers import _format_args
-from testutils.helpers import _match_args
-from testutils.expectation import Expectation
-from testutils.expectation import ReturnValue
-from testutils.exceptions import *
+from flex.helpers import _arguments_match
+from flex.helpers import _isclass
+from flex.helpers import _format_args
+from flex.helpers import _match_args
+from flex.expectation import Expectation
+from flex.expectation import ReturnValue
+from flex.exceptions import *
 
 
 # Holds global hash of object/expectation mappings
-_testutils_objects = {}
+_flex_objects = {}
 
 
 class Wrap(object):
@@ -62,7 +62,7 @@ class Wrap(object):
             if _isclass(self.__object__):
                 raise AttributeError
             else:
-                raise TestutilsError('__new__ can only be replaced on classes')
+                raise FlexError('__new__ can only be replaced on classes')
         return object.__getattribute__(self, name)
 
     def __getattr__(self, name):
@@ -89,13 +89,13 @@ class Wrap(object):
         if not isinstance(obj, Wrap) and not hasattr(obj, method):
             raise MethodDoesNotExist('%s does not have method %s' %
                                      (obj, method))
-        if self not in _testutils_objects:
-            _testutils_objects[self] = []
+        if self not in _flex_objects:
+            _flex_objects[self] = []
         expectation = self._create_expectation(method, return_value)
-        if expectation not in _testutils_objects[self]:
+        if expectation not in _flex_objects[self]:
             try:
                 self._update_method(expectation, method)
-                _testutils_objects[self].append(expectation)
+                _flex_objects[self].append(expectation)
             except TypeError:
                 raise AttemptingToMockBuiltin(
                     'Python does not allow updating builtin objects. '
@@ -107,8 +107,8 @@ class Wrap(object):
         return expectation
 
     def _create_expectation(self, method, return_value=None):
-        if method in [x.method for x in _testutils_objects[self]]:
-            expectation = [x for x in _testutils_objects[self]
+        if method in [x.method for x in _flex_objects[self]]:
+            expectation = [x for x in _flex_objects[self]
                            if x.method == method][0]
             original_method = expectation.original_method
             expectation = Expectation(
@@ -202,16 +202,16 @@ class Wrap(object):
             args = {'kargs': args, 'kwargs': {}}
         if not isinstance(args['kargs'], tuple):
             args['kargs'] = (args['kargs'],)
-        if name and self in _testutils_objects:
-            for e in reversed(_testutils_objects[self]):
+        if name and self in _flex_objects:
+            for e in reversed(_flex_objects[self]):
                 if e.method == name and _match_args(args, e.args):
                     if e._ordered:
-                        e._verify_call_order(_testutils_objects)
+                        e._verify_call_order(_flex_objects)
                     return e
 
 
     def _add_expectation(self, expectation):
-        if self in _testutils_objects:
-            _testutils_objects[self].append(expectation)
+        if self in _flex_objects:
+            _flex_objects[self].append(expectation)
         else:
-            _testutils_objects[self] = [expectation]
+            _flex_objects[self] = [expectation]

@@ -22,11 +22,11 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
-from testutils.exceptions import *
-from testutils.helpers import _arg_to_str
-from testutils.helpers import _format_args
-from testutils.helpers import _isclass
-from testutils.helpers import _match_args
+from flex.exceptions import *
+from flex.helpers import _arg_to_str
+from flex.helpers import _format_args
+from flex.helpers import _isclass
+from flex.helpers import _match_args
 
 
 AT_LEAST = 'at least'
@@ -81,7 +81,7 @@ class Expectation(object):
 
     def __call__(self, *kargs, **kwargs):
         if self.args:
-            raise TestutilsError('Arguments can only be specified once')
+            raise FlexError('Arguments can only be specified once')
 
         self.args = {'kargs': kargs, 'kwargs': kwargs}
         return self
@@ -113,7 +113,7 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise TestutilsError('returns() cannot be specified after runs()')
+            raise FlexError('returns() cannot be specified after runs()')
         return_values = self._action['return_values']
         if not values:
             return_values.append(ReturnValue())
@@ -134,7 +134,7 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise TestutilsError('raises() cannot be specified after runs()')
+            raise FlexError('raises() cannot be specified after runs()')
         args = {'kargs': kargs, 'kwargs': kwargs}
         return_values = self._action['return_values']
         return_values.append(ReturnValue(raises=exception, value=args))
@@ -150,7 +150,7 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise TestutilsError('yields() cannot be specified after runs()')
+            raise FlexError('yields() cannot be specified after runs()')
         yield_values = self._action['yield_values']
         for value in values:
             yield_values.append(ReturnValue(value))
@@ -166,19 +166,19 @@ class Expectation(object):
             - self, i.e. can be chained with other Expectation methods
         """
         if any(val for _, val in self._action.items()):
-          raise TestutilsError('runs() cannot be mixed with return values')
+          raise FlexError('runs() cannot be mixed with return values')
         if not function:
           function = self.original_method
         replace_with = self._replace_with
         original_method = self.original_method
         if replace_with:
-            raise TestutilsError('runs() cannot be specified twice')
+            raise FlexError('runs() cannot be specified twice')
         mock = self._mock
         obj = object.__getattribute__(mock, '__object__')
         func_type = type(function)
         if _isclass(obj):
             if func_type is not classmethod and func_type is not staticmethod:
-                raise TestutilsError('calls() cannot be used on a class mock')
+                raise FlexError('calls() cannot be used on a class mock')
         if function == original_method:
             self._pass_thru = True
         self._replace_with = function
@@ -278,8 +278,8 @@ class Expectation(object):
                 setattr(obj, method, original_method)
         del self
 
-    def _verify_call_order(self, testutils_objects):
-        for exp in testutils_objects[self._mock]:
+    def _verify_call_order(self, flex_objects):
+        for exp in flex_objects[self._mock]:
             if (exp.method == self.method and
                     not _match_args(self.args, exp.args) and
                     not exp.times_called):

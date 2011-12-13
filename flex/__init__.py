@@ -24,10 +24,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import sys
 
-from testutils.fake import Fake
-from testutils.helpers import _match_args
-from testutils.wrap import _testutils_objects
-from testutils.wrap import Wrap
+from flex.fake import Fake
+from flex.helpers import _match_args
+from flex.wrap import _flex_objects
+from flex.wrap import Wrap
 
 
 def flex(spec, **kwargs):
@@ -43,7 +43,7 @@ def flex(spec, **kwargs):
     Returns:
         Wrap object
     """
-    matches = [x for x in _testutils_objects if x.__object__ is spec]
+    matches = [x for x in _flex_objects if x.__object__ is spec]
     if matches:
         mock = matches[0]
     else:
@@ -64,12 +64,12 @@ def verify():
     """Performs testuitls-specific teardown tasks."""
  
     saved = {}
-    for mock_object, expectations in _testutils_objects.items():
+    for mock_object, expectations in _flex_objects.items():
         saved[mock_object] = expectations[:]
         for expectation in expectations:
             expectation._reset()
     for mock_object in saved:
-        del _testutils_objects[mock_object]
+        del _flex_objects[mock_object]
     # make sure this is done last to keep exceptions here from breaking
     # any of the previous steps that cleanup all the changes
     for mock_object, expectations in saved.items():
@@ -122,13 +122,13 @@ def _update_unittest(klass):
             verify()
             saved_addSuccess(self, test)
         except:
-            if hasattr(self, '_pre_testutils_success'):
+            if hasattr(self, '_pre_flex_success'):
                 self.addError(test, sys.exc_info())
         return saved_stopTest(self, test)
     klass.stopTest = stopTest
 
     def addSuccess(self, test):
-        self._pre_testutils_success = True
+        self._pre_flex_success = True
     klass.addSuccess = addSuccess
 
 
