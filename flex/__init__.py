@@ -116,7 +116,7 @@ _hook_into_doctest()
 
 
 def _patch_test_result(klass):
-    """Patches flex into any class that inherits unittest.TestResult.
+    """Patches flex verify() into any class that inherits unittest.TestResult.
 
     This seems to work well for majority of test runners. In the case of nose
     it's not even necessary as it doesn't override unittest.TestResults's
@@ -150,6 +150,8 @@ def _patch_test_result(klass):
             except:
                 if hasattr(self, '_pre_flex_success'):
                     self.addFailure(test, sys.exc_info())
+            if hasattr(self, '_pre_flex_success'):
+                del self._pre_flex_success
         return saved_stopTest(self, test)
 
     if klass.stopTest is not stopTest:

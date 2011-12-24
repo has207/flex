@@ -227,6 +227,8 @@ class Expectation(object):
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
+        if not hasattr(func, '__call__'):
+            raise FlexError('when() parameter must be callable')
         self.runnable = func
         return self
 

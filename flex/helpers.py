@@ -108,3 +108,17 @@ def _get_code(func):
     else:
         code = '__code__'
     return getattr(func, code)
+
+
+def _get_runnable_name(runnable):
+    """Ugly hack to get the name of when() condition from the source code."""
+    name = 'condition'
+    try:
+        source = inspect.getsource(runnable)
+        if 'when(' in source:
+            name = source.split('when(')[1].split(')')[0]
+        elif 'def ' in source:
+            name = source.split('def ')[1].split('(')[0]
+    except:  # couldn't get the source, oh well
+        pass
+    return name

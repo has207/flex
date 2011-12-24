@@ -30,6 +30,7 @@ from flex.helpers import _arguments_match
 from flex.helpers import _isclass
 from flex.helpers import _format_args
 from flex.helpers import _match_args
+from flex.helpers import _get_runnable_name
 from flex.expectation import Expectation
 from flex.expectation import ReturnValue
 from flex.exceptions import FlexError
@@ -164,7 +165,7 @@ class Wrap(object):
                 if not expectation.runnable():
                     raise StateError(
                         '%s expected to be called when %s is True' %
-                        (method, expectation.runnable))
+                        (method, _get_runnable_name(expectation.runnable)))
                 expectation.times_called += 1
                 _pass_thru = expectation._pass_thru
                 _replace_with = expectation._replace_with

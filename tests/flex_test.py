@@ -947,6 +947,15 @@ class RegularClass(object):
         radio.select_channel()
         radio.adjust_volume(5)
 
+    def test_when_fails_unless_passed_runnable(self):
+        class Radio:
+            is_on = True
+            def select_channel(self): return None
+        radio = Radio()
+        expectation = flex(radio).select_channel
+        assertRaises(FlexError, expectation.when, radio.is_on)
+        expectation.when(lambda: radio.is_on)
+
     def test_support_at_least_and_at_most_together(self):
         class Foo:
             def bar(self): pass
