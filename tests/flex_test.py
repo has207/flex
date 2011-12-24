@@ -76,14 +76,14 @@ class RegularClass(object):
             def method_foo(self): pass
         mock = flex(Foo)
         mock.method_foo
-        assertEqual('method_foo', mock._Wrap__get_expectation('method_foo').method)
+        assertEqual('method_foo', mock._Flex__get_expectation('method_foo').method)
 
     def test_flex_expectations_returns_none_if_not_found(self):
         class Foo:
             def method_foo(self): pass
         mock = flex(Foo)
         mock.method_foo
-        assert mock._Wrap__get_expectation('method_bar') is None
+        assert mock._Flex__get_expectation('method_bar') is None
 
     def test_flex_should_check_parameters(self):
         class Foo:
@@ -106,11 +106,11 @@ class RegularClass(object):
         foo.method_foo('bar')
         foo.method_foo('bar')
         foo.method_foo('baz')
-        expectation = mock._Wrap__get_expectation('method_foo', ('foo',))
+        expectation = mock._Flex__get_expectation('method_foo', ('foo',))
         assertEqual(0, expectation._times_called)
-        expectation = mock._Wrap__get_expectation('method_foo', ('bar',))
+        expectation = mock._Flex__get_expectation('method_foo', ('bar',))
         assertEqual(2, expectation._times_called)
-        expectation = mock._Wrap__get_expectation('method_foo', ('baz',))
+        expectation = mock._Flex__get_expectation('method_foo', ('baz',))
         assertEqual(1, expectation._times_called)
 
     def test_flex_should_set_expectation_call_numbers(self):
@@ -119,7 +119,7 @@ class RegularClass(object):
         foo = Foo()
         mock = flex(foo)
         mock.method_foo.times(1)
-        expectation = mock._Wrap__get_expectation('method_foo')
+        expectation = mock._Flex__get_expectation('method_foo')
         assertRaises(MethodCallError, expectation._verify)
         foo.method_foo()
         expectation._verify()
@@ -133,7 +133,7 @@ class RegularClass(object):
         foo = Foo()
         mock.method_foo.raises(FakeException)
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._Wrap__get_expectation('method_foo')._times_called)
+        assertEqual(1, mock._Flex__get_expectation('method_foo')._times_called)
 
     def test_flex_should_check_raised_exceptions_instance_with_args(self):
         class Foo:
@@ -145,7 +145,7 @@ class RegularClass(object):
                 pass
         mock.method_foo.raises(FakeException(1, arg2=2))
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._Wrap__get_expectation('method_foo')._times_called)
+        assertEqual(1, mock._Flex__get_expectation('method_foo')._times_called)
 
     def test_flex_should_check_raised_exceptions_class_with_args(self):
         class Foo:
@@ -157,7 +157,7 @@ class RegularClass(object):
                 pass
         mock.method_foo.raises(FakeException, 1, arg2=2)
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._Wrap__get_expectation('method_foo')._times_called)
+        assertEqual(1, mock._Flex__get_expectation('method_foo')._times_called)
 
     def test_flex_should_match_any_args_by_default(self):
         class Foo:
@@ -415,7 +415,7 @@ class RegularClass(object):
         foo = Foo()
         mock = flex(foo)
         mock.method_foo('value_bar')
-        assert mock._Wrap__get_expectation('method_foo', 'value_bar')
+        assert mock._Flex__get_expectation('method_foo', 'value_bar')
 
     def test_flex_function_should_always_return_same_mock_object(self):
         class User(object): pass

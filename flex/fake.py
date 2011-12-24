@@ -25,7 +25,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 import sys
 
 
-class Fake(object):
+class _Fake(object):
 
     def __init__(self, **kwargs):
         """Constructors the fake object.
@@ -87,4 +87,4 @@ class Fake(object):
         return inner
 
 
-ORIGINAL_FAKE_ATTRS = dir(Fake) + ['__calls__']
+ORIGINAL_FAKE_ATTRS = dir(_Fake) + ['__calls__']

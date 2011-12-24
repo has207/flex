@@ -43,14 +43,14 @@ from flex.exceptions import MockBuiltinError
 _flex_objects = {}
 
 
-class Wrap(object):
-    """Wrap object class returned by the wrap() function."""
+class _Flex(object):
+    """Flex object returned by the flex() function."""
 
     def __init__(self, spec):
-        """Wrap constructor.
+        """Flex constructor.
 
         Args:
-            - spec: object, class or module to wrap
+            - spec: object, class or module to flex
         """
         self.__object = spec
         expectation = Expectation(self)
@@ -89,7 +89,7 @@ class Wrap(object):
             else:
                 name = obj.__class__.__name__
             method = '_%s__%s' % (name, method.lstrip('_'))
-        if not isinstance(obj, Wrap) and not hasattr(obj, method):
+        if not isinstance(obj, _Flex) and not hasattr(obj, method):
             raise FlexError('%s does not have method %s' % (obj, method))
             exc_msg = '%s does not have method %s' % (obj, method)
             if method == '__new__':
@@ -151,7 +151,7 @@ class Wrap(object):
             return_values = None
             original_method = expectation.original_method
             mock = expectation.mock
-            obj = mock._Wrap__object
+            obj = mock._Flex__object
             if _isclass(obj):
                 if (type(original_method) is classmethod or
                         type(original_method) is staticmethod):

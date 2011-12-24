@@ -24,31 +24,31 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 import sys
 
-from flex.fake import Fake
+from flex.fake import _Fake
 from flex.helpers import _match_args
 from flex.helpers import _get_code
 from flex.wrap import _flex_objects
-from flex.wrap import Wrap
+from flex.wrap import _Flex
 
 
-def flex(spec, **kwargs):
+def flex(spec):
     """Wraps an object in order to manipulate its methods.
 
     Examples:
-        >>> wrap(SomeClass).some_method.returns('stuff')
+        >>> flex(SomeClass).some_method.returns('stuff')
 
     Args:
         - spec: object (or class or module) to mock
         - kwargs: method/return_value pairs to attach to the object
 
     Returns:
-        Wrap object
+        Flex object
     """
-    matches = [x for x in _flex_objects if x._Wrap__object is spec]
+    matches = [x for x in _flex_objects if x._Flex__object is spec]
     if matches:
         mock = matches[0]
     else:
-        mock = Wrap(spec, **kwargs)
+        mock = _Flex(spec)
     return mock
 
 
@@ -58,7 +58,7 @@ def fake(**kwargs):
     Populates the returned object's attribute/value pairs based on
     keyword arguments provided.
     """
-    return Fake(**kwargs)
+    return _Fake(**kwargs)
 
 
 def verify():

@@ -169,7 +169,7 @@ class Expectation(object):
         if replace_with:
             raise FlexError('runs() cannot be specified twice')
         mock = self.mock
-        obj = mock._Wrap__object
+        obj = mock._Flex__object
         func_type = type(function)
         if _isclass(obj):
             if func_type is not classmethod and func_type is not staticmethod:
@@ -272,7 +272,7 @@ class Expectation(object):
     def _reset(self):
         """Returns methods overriden by this expectation to their originals."""
         mock = self.mock
-        obj = mock._Wrap__object
+        obj = mock._Flex__object
         original_method = self.original_method
         if original_method:
             method = self.method
