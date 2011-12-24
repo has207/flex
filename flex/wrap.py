@@ -55,7 +55,7 @@ class Wrap(object):
               to stub out multiple methods at the same time with specified
               return values
         """
-        self.__object__ = spec
+        self._object = spec
         for method, return_value in methods.items():
             self._stubs(method).returns(return_value)
         self._add_expectation(Expectation(self))
@@ -63,7 +63,7 @@ class Wrap(object):
     def __getattribute__(self, name):
         # TODO(herman): this sucks, generalize this!
         if name == '__new__':
-            if _isclass(self.__object__):
+            if _isclass(self._object):
                 raise AttributeError
             else:
                 raise FlexError('__new__ can only be replaced on classes')
@@ -81,7 +81,7 @@ class Wrap(object):
         Returns:
             - Expectation object
         """
-        obj = object.__getattribute__(self, '__object__')
+        obj = object.__getattribute__(self, '_object')
         return_value = None
         if (method.startswith('__') and not method.endswith('__') and
                 not inspect.ismodule(obj)):
@@ -92,6 +92,10 @@ class Wrap(object):
             method = '_%s__%s' % (name, method.lstrip('_'))
         if not isinstance(obj, Wrap) and not hasattr(obj, method):
             raise FlexError('%s does not have method %s' % (obj, method))
+            exc_msg = '%s does not have method %s' % (obj, method)
+            if method == '__new__':
+                exc_msg = 'old-style classes do not have a __new__() method'
+            raise FlexError(exc_msg)
         if self not in _flex_objects:
             _flex_objects[self] = []
         expectation = self._create_expectation(method, return_value)
@@ -123,7 +127,7 @@ class Wrap(object):
         return expectation
 
     def _update_method(self, expectation, method):
-        obj = object.__getattribute__(self, '__object__')
+        obj = object.__getattribute__(self, '_object')
         original_method = expectation.original_method
         meth = object.__getattribute__(self, '_create_mock_method')(method)
         if hasattr(obj, method) and not original_method:
@@ -148,7 +152,7 @@ class Wrap(object):
             return_values = None
             original_method = expectation.original_method
             _mock = expectation._mock
-            obj = object.__getattribute__(_mock, '__object__')
+            obj = object.__getattribute__(_mock, '_object')
             if _isclass(obj):
                 if (type(original_method) is classmethod or
                         type(original_method) is staticmethod):

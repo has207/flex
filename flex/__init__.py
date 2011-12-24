@@ -44,7 +44,7 @@ def flex(spec, **kwargs):
     Returns:
         Wrap object
     """
-    matches = [x for x in _flex_objects if x.__object__ is spec]
+    matches = [x for x in _flex_objects if x._object is spec]
     if matches:
         mock = matches[0]
     else:

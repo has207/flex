@@ -41,7 +41,7 @@ class Fake(object):
                 setattr(self, attr, value)
 
     def __enter__(self):
-        return self.__object__
+        return self._object
 
     def __exit__(self, type, value, traceback):
         return self
