@@ -26,20 +26,21 @@ import sys
 
 from flex.fake import Fake
 from flex.helpers import _match_args
+from flex.helpers import _get_code
 from flex.wrap import _flex_objects
 from flex.wrap import Wrap
 
 
 def flex(spec, **kwargs):
     """Wraps an object in order to manipulate its methods.
- 
+
     Examples:
         >>> wrap(SomeClass).some_method.returns('stuff')
- 
+
     Args:
         - spec: object (or class or module) to mock
         - kwargs: method/return_value pairs to attach to the object
- 
+
     Returns:
         Wrap object
     """
@@ -53,7 +54,7 @@ def flex(spec, **kwargs):
 
 def fake(**kwargs):
     """Creates a fake object.
- 
+
     Populates the returned object's attribute/value pairs based on
     keyword arguments provided.
     """
@@ -61,8 +62,8 @@ def fake(**kwargs):
 
 
 def verify():
-    """Performs testuitls-specific teardown tasks."""
- 
+    """Performs flex-specific teardown tasks."""
+
     saved = {}
     for mock_object, expectations in _flex_objects.items():
         saved[mock_object] = expectations[:]
@@ -93,7 +94,7 @@ def _hook_into_pytest():
             else:
                 return ret
         runner.call_runtest_hook = call_runtest_hook
- 
+
     except ImportError:
         pass
 _hook_into_pytest()
@@ -114,32 +115,111 @@ def _hook_into_doctest():
 _hook_into_doctest()
 
 
-def _update_unittest(klass):
-    saved_stopTest = klass.stopTest
+def _patch_test_result(klass):
+    """Patches flex into any class that inherits unittest.TestResult.
+
+    This seems to work well for majority of test runners. In the case of nose
+    it's not even necessary as it doesn't override unittest.TestResults's
+    addSuccess and addFailure methods so simply patching unittest works out of
+    the box for nose.
+
+    For those that do inherit from unittest.TestResult and override its
+    stopTest and addSuccess methods, patching is pretty straightforward
+    (numerous examples below).
+
+    The reason we don't simply patch unittest's parent TestResult class is
+    stopTest and addSuccess in the child classes tend to add messages into the
+    output that we want to override in case flex generates its own failures.
+    """
+
     saved_addSuccess = klass.addSuccess
-    def stopTest(self, test):
-        try:
-            verify()
-            saved_addSuccess(self, test)
-        except:
-            if hasattr(self, '_pre_flex_success'):
-                self.addError(test, sys.exc_info())
-        return saved_stopTest(self, test)
-    klass.stopTest = stopTest
+    saved_stopTest = klass.stopTest
 
     def addSuccess(self, test):
         self._pre_flex_success = True
-    klass.addSuccess = addSuccess
+
+    def stopTest(self, test):
+        if _get_code(saved_stopTest) is not _get_code(stopTest):
+            # if parent class was for some reason patched, avoid calling
+            # verify() twice and delegate up the class hierarchy
+            # this doesn't help if there is a gap and only the parent's
+            # parent class was patched, but should cover most screw-ups
+            try:
+                verify()
+                saved_addSuccess(self, test)
+            except:
+                if hasattr(self, '_pre_flex_success'):
+                    self.addFailure(test, sys.exc_info())
+        return saved_stopTest(self, test)
+
+    if klass.stopTest is not stopTest:
+        klass.stopTest = stopTest
+
+    if klass.addSuccess is not addSuccess:
+        klass.addSuccess = addSuccess
 
 
 def _hook_into_unittest():
+    import unittest
     try:
-        import unittest
         try:
-            from unittest import TextTestResult as TestResult
-        except ImportError:
-            from unittest import _TextTestResult as TestResult
-        _update_unittest(TestResult)
-    except ImportError:
+            # only valid TestResult class for unittest is TextTestResult
+            _patch_test_result(unittest.TextTestResult)
+        except AttributeError:
+            # ugh, python2.4
+            _patch_test_result(unittest._TextTestResult)
+    except: # let's not take any chances
         pass
 _hook_into_unittest()
+
+
+def _hook_into_unittest2():
+    try:
+        try:
+            from unittest2 import TextTestResult
+        except ImportError:
+            # Django has its own copy of unittest2 it uses as fallback
+            from django.utils.unittest import TextTestResult
+        _patch_test_result(TextTestResult)
+    except:
+        pass
+_hook_into_unittest2()
+
+
+def _hook_into_twisted():
+    try:
+        from twisted.trial import reporter
+        _patch_test_result(reporter.MinimalReporter)
+        _patch_test_result(reporter.TextReporter)
+        _patch_test_result(reporter.VerboseTextReporter)
+        _patch_test_result(reporter.TreeReporter)
+    except:
+        pass
+_hook_into_twisted()
+
+
+def _hook_into_subunit():
+    try:
+        import subunit
+        _patch_test_result(subunit.TestProtocolClient)
+    except:
+        pass
+_hook_into_subunit()
+
+
+def _hook_into_zope():
+    try:
+        from zope import testrunner
+        _patch_test_result(testrunner.runner.TestResult)
+    except:
+        pass
+_hook_into_zope()
+
+
+def _hook_into_testtools():
+    try:
+        from testtools import testresult
+        _patch_test_result(testresult.TestResult)
+    except:
+        pass
+_hook_into_testtools()

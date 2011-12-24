@@ -97,3 +97,14 @@ def _isclass(obj):
         return isinstance(obj, (type, types.ClassType))
     else:
         return inspect.isclass(obj)
+
+
+def _get_code(func):
+    if hasattr(func, 'func_code'):
+        code = 'func_code'
+    elif hasattr(func, 'im_func'):
+        func = func.im_func
+        code = 'func_code'
+    else:
+        code = '__code__'
+    return getattr(func, code)
