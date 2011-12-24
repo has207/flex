@@ -57,6 +57,7 @@ class Expectation(object):
     """
 
     def __init__(self, mock, name=None, return_value=None, original_method=None):
+        self.mock = mock
         self.method = name
         self.original_method = original_method
         self.args = None
@@ -72,7 +73,6 @@ class Expectation(object):
         self._times_called = 0
         self._expected_calls = {EXACTLY: None, AT_LEAST: None, AT_MOST: None}
         self._runnable = lambda: True
-        self._mock = mock
         self._pass_thru = False
         self._ordered = False
         self._verified = False
@@ -88,14 +88,6 @@ class Expectation(object):
 
         self.args = {'kargs': kargs, 'kwargs': kwargs}
         return self
-
-    @property
-    def mock(self):
-        """Return the mock associated with this expectation.
-
-        Since this method is a property it must be called without parentheses.
-        """
-        return self._mock
 
     def returns(self, *values):
         """Override the return value of this expectation's method.
@@ -176,8 +168,8 @@ class Expectation(object):
         original_method = self.original_method
         if replace_with:
             raise FlexError('runs() cannot be specified twice')
-        mock = self._mock
-        obj = object.__getattribute__(mock, '_object')
+        mock = self.mock
+        obj = mock._Wrap__object
         func_type = type(function)
         if _isclass(obj):
             if func_type is not classmethod and func_type is not staticmethod:
@@ -279,8 +271,8 @@ class Expectation(object):
 
     def _reset(self):
         """Returns methods overriden by this expectation to their originals."""
-        _mock = self._mock
-        obj = _mock._object
+        mock = self.mock
+        obj = mock._Wrap__object
         original_method = self.original_method
         if original_method:
             method = self.method
@@ -295,7 +287,7 @@ class Expectation(object):
         del self
 
     def _verify_call_order(self, flex_objects):
-        for exp in flex_objects[self._mock]:
+        for exp in flex_objects[self.mock]:
             if (exp.method == self.method and
                     not _match_args(self.args, exp.args) and
                     not exp._times_called):

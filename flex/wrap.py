@@ -46,33 +46,32 @@ _flex_objects = {}
 class Wrap(object):
     """Wrap object class returned by the wrap() function."""
 
-    def __init__(self, spec, **methods):
+    def __init__(self, spec):
         """Wrap constructor.
 
         Args:
             - spec: object, class or module to wrap
-            - methods: dict of method/return_value pairs used
-              to stub out multiple methods at the same time with specified
-              return values
         """
-        self._object = spec
-        for method, return_value in methods.items():
-            self._stubs(method).returns(return_value)
-        self._add_expectation(Expectation(self))
+        self.__object = spec
+        expectation = Expectation(self)
+        if self in _flex_objects:
+            _flex_objects[self].append(expectation)
+        else:
+            _flex_objects[self] = [expectation]
 
     def __getattribute__(self, name):
         # TODO(herman): this sucks, generalize this!
         if name == '__new__':
-            if _isclass(self._object):
+            if _isclass(self.__object):
                 raise AttributeError
             else:
                 raise FlexError('__new__ can only be replaced on classes')
         return object.__getattribute__(self, name)
 
     def __getattr__(self, name):
-        return self._stubs(name)
+        return self.__stubs(name)
 
-    def _stubs(self, method):
+    def __stubs(self, method):
         """Replaces a method with a fake one.
 
         Args:
@@ -81,7 +80,7 @@ class Wrap(object):
         Returns:
             - Expectation object
         """
-        obj = object.__getattribute__(self, '_object')
+        obj = self.__object
         return_value = None
         if (method.startswith('__') and not method.endswith('__') and
                 not inspect.ismodule(obj)):
@@ -98,10 +97,10 @@ class Wrap(object):
             raise FlexError(exc_msg)
         if self not in _flex_objects:
             _flex_objects[self] = []
-        expectation = self._create_expectation(method, return_value)
+        expectation = self.__create_expectation(method, return_value)
         if expectation not in _flex_objects[self]:
             try:
-                self._update_method(expectation, method)
+                self.__update_method(expectation, method)
                 _flex_objects[self].append(expectation)
             except TypeError:
                 raise MockBuiltinError(
@@ -113,7 +112,7 @@ class Wrap(object):
                     'Consider wrapping it in a class you can mock instead')
         return expectation
 
-    def _create_expectation(self, method, return_value=None):
+    def __create_expectation(self, method, return_value=None):
         if method in [x.method for x in _flex_objects[self]]:
             expectation = [x for x in _flex_objects[self]
                            if x.method == method][0]
@@ -126,10 +125,10 @@ class Wrap(object):
                 self, name=method, return_value=return_value)
         return expectation
 
-    def _update_method(self, expectation, method):
-        obj = object.__getattribute__(self, '_object')
+    def __update_method(self, expectation, method):
+        obj = self.__object
         original_method = expectation.original_method
-        meth = object.__getattribute__(self, '_create_mock_method')(method)
+        meth = self.__create_mock_method(method)
         if hasattr(obj, method) and not original_method:
             if hasattr(obj, '__dict__') and method in obj.__dict__:
                 expectation.original_method = obj.__dict__[method]
@@ -143,7 +142,7 @@ class Wrap(object):
         else:
             setattr(obj, method, types.MethodType(meth, obj))
 
-    def _create_mock_method(self, method):
+    def __create_mock_method(self, method):
         def generator_method(yield_values):
             for value in yield_values:
                 yield value.value
@@ -151,8 +150,8 @@ class Wrap(object):
         def pass_thru(expectation, *kargs, **kwargs):
             return_values = None
             original_method = expectation.original_method
-            _mock = expectation._mock
-            obj = object.__getattribute__(_mock, '_object')
+            mock = expectation.mock
+            obj = mock._Wrap__object
             if _isclass(obj):
                 if (type(original_method) is classmethod or
                         type(original_method) is staticmethod):
@@ -164,7 +163,7 @@ class Wrap(object):
 
         def mock_method(runtime_self, *kargs, **kwargs):
             arguments = {'kargs': kargs, 'kwargs': kwargs}
-            expectation = self._get_expectation(method, arguments)
+            expectation = self.__get_expectation(method, arguments)
             if expectation:
                 if not expectation._runnable():
                     raise StateError(
@@ -202,7 +201,7 @@ class Wrap(object):
 
         return mock_method
 
-    def _get_expectation(self, name=None, args=None):
+    def __get_expectation(self, name=None, args=None):
         """Gets attached to the object under mock and is called in that context."""
         if args == None:
             args = {'kargs': (), 'kwargs': {}}
@@ -216,10 +215,3 @@ class Wrap(object):
                     if e._ordered:
                         e._verify_call_order(_flex_objects)
                     return e
-
-
-    def _add_expectation(self, expectation):
-        if self in _flex_objects:
-            _flex_objects[self].append(expectation)
-        else:
-            _flex_objects[self] = [expectation]
