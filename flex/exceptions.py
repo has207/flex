@@ -26,33 +26,29 @@ class FlexError(Exception):
     pass
 
 
-class AttemptingToMockBuiltin(FlexError):
+class MockBuiltinError(FlexError):
     pass
 
 
-class InvalidMethodSignature(FlexError):
+class MethodSignatureError(FlexError):
     pass
 
 
-class InvalidExceptionClass(FlexError):
+class ExceptionClassError(FlexError):
     pass
 
 
-class InvalidExceptionMessage(FlexError):
+class ExceptionMessageError(FlexError):
     pass
 
 
-class InvalidState(FlexError):
+class StateError(FlexError):
     pass
 
 
-class MethodNotCalled(FlexError):
+class MethodCallError(FlexError):
     pass
 
 
-class MethodCalledOutOfOrder(FlexError):
-    pass
-
-
-class MethodDoesNotExist(FlexError):
+class CallOrderError(FlexError):
     pass

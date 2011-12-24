@@ -32,7 +32,10 @@ from flex.helpers import _format_args
 from flex.helpers import _match_args
 from flex.expectation import Expectation
 from flex.expectation import ReturnValue
-from flex.exceptions import *
+from flex.exceptions import FlexError
+from flex.exceptions import StateError
+from flex.exceptions import MethodSignatureError
+from flex.exceptions import MockBuiltinError
 
 
 # Holds global hash of object/expectation mappings
@@ -87,8 +90,7 @@ class Wrap(object):
                 name = obj.__class__.__name__
             method = '_%s__%s' % (name, method.lstrip('_'))
         if not isinstance(obj, Wrap) and not hasattr(obj, method):
-            raise MethodDoesNotExist('%s does not have method %s' %
-                                     (obj, method))
+            raise FlexError('%s does not have method %s' % (obj, method))
         if self not in _flex_objects:
             _flex_objects[self] = []
         expectation = self._create_expectation(method, return_value)
@@ -97,11 +99,11 @@ class Wrap(object):
                 self._update_method(expectation, method)
                 _flex_objects[self].append(expectation)
             except TypeError:
-                raise AttemptingToMockBuiltin(
+                raise MockBuiltinError(
                     'Python does not allow updating builtin objects. '
                     'Consider wrapping it in a class you can mock instead')
             except AttributeError:
-                raise AttemptingToMockBuiltin(
+                raise MockBuiltinError(
                     'Python does not allow updating instances of builtins. '
                     'Consider wrapping it in a class you can mock instead')
         return expectation
@@ -160,7 +162,7 @@ class Wrap(object):
             expectation = self._get_expectation(method, arguments)
             if expectation:
                 if not expectation.runnable():
-                    raise InvalidState(
+                    raise StateError(
                         '%s expected to be called when %s is True' %
                         (method, expectation.runnable))
                 expectation.times_called += 1
@@ -190,7 +192,7 @@ class Wrap(object):
                 else:
                     return return_value.value
             else:
-                raise InvalidMethodSignature(_format_args(method, arguments))
+                raise MethodSignatureError(_format_args(method, arguments))
 
         return mock_method
 

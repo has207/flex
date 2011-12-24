@@ -1,13 +1,10 @@
 # -*- coding: utf8 -*-
-from flex.exceptions import AttemptingToMockBuiltin
+from flex.exceptions import MockBuiltinError
 from flex.exceptions import FlexError
-from flex.exceptions import InvalidMethodSignature
-from flex.exceptions import InvalidExceptionClass
-from flex.exceptions import InvalidExceptionMessage
-from flex.exceptions import InvalidState
-from flex.exceptions import MethodDoesNotExist
-from flex.exceptions import MethodNotCalled
-from flex.exceptions import MethodCalledOutOfOrder
+from flex.exceptions import MethodSignatureError
+from flex.exceptions import StateError
+from flex.exceptions import MethodCallError
+from flex.exceptions import CallOrderError
 from flex.expectation import ReturnValue
 from flex.helpers import _format_args
 from flex import _flex_objects
@@ -133,7 +130,7 @@ class RegularClass(object):
         mock = flex(foo)
         mock.method_foo.times(1)
         expectation = mock._get_expectation('method_foo')
-        assertRaises(MethodNotCalled, expectation._verify)
+        assertRaises(MethodCallError, expectation._verify)
         foo.method_foo()
         expectation._verify()
 
@@ -190,7 +187,7 @@ class RegularClass(object):
         mock = flex(Foo)
         foo = Foo()
         mock.method_foo()
-        assertRaises(InvalidMethodSignature, foo.method_foo, 'baz')
+        assertRaises(MethodSignatureError, foo.method_foo, 'baz')
 
     def test_flex_should_match_exactly_no_args(self):
         class Foo:
@@ -256,7 +253,7 @@ class RegularClass(object):
         mock.method_foo(int).returns('got an int')
         assertEqual('got a string', foo.method_foo('string!'))
         assertEqual('got an int', foo.method_foo(23))
-        assertRaises(InvalidMethodSignature, foo.method_foo, 2.0)
+        assertRaises(MethodSignatureError, foo.method_foo, 2.0)
 
     def test_should_match_expectations_against_user_defined_classes(self):
         class Foo:
@@ -265,13 +262,13 @@ class RegularClass(object):
         mock = flex(foo)
         mock.method_foo(Foo).returns('got a Foo')
         assertEqual('got a Foo', foo.method_foo(Foo()))
-        assertRaises(InvalidMethodSignature, foo.method_foo, 1)
+        assertRaises(MethodSignatureError, foo.method_foo, 1)
 
     def test_flex_teardown_verifies_mocks(self):
         class Foo:
             def uncalled_method(self): pass
         flex(Foo).uncalled_method.times(1)
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
     def test_flex_teardown_does_not_verify_stubs(self):
         class Foo:
@@ -365,7 +362,7 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).method_foo.returns('bar').times(2, None)
         foo.method_foo()
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
     def test_flex_respects_at_least_when_called_requested_number(self):
         class Foo:
@@ -407,7 +404,7 @@ class RegularClass(object):
         flex(foo).method_foo.returns('value_bar').times(0, 1)
         foo.method_foo()
         foo.method_foo()
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
     def test_flex_works_with_never_when_true(self):
         class Foo:
@@ -422,7 +419,7 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).method_foo.returns('value_bar').times(0)
         foo.method_foo()
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
     
     def test_flex_get_flex_expectation_should_work_with_args(self):
         class Foo:
@@ -512,11 +509,11 @@ class RegularClass(object):
             def method2(self): pass
         group = Group()
         flex(group).method1.runs().times(1, None)
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
         flex(group).method2('a').times(1)
         flex(group).method2('not a')
         flex(group).method2('not a')
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
     def test_flex_doesnt_error_on_properly_ordered_expectations(self):
         class Foo(object):
@@ -549,7 +546,7 @@ class RegularClass(object):
         Foo.bar()
         Foo.bar()
         Foo.foo()
-        assertRaises(MethodCalledOutOfOrder, Foo.method1, 'b')
+        assertRaises(CallOrderError, Foo.method1, 'b')
 
     def test_flex_should_accept_multiple_return_values(self):
         class Foo:
@@ -591,9 +588,9 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).method1(str, int).returns('ok')
         assertEqual('ok', foo.method1('some string', 12))
-        assertRaises(InvalidMethodSignature, foo.method1, 12, 32)
-        assertRaises(InvalidMethodSignature, foo.method1, 12, 'some string')
-        assertRaises(InvalidMethodSignature, foo.method1, 'string', 12, 14)
+        assertRaises(MethodSignatureError, foo.method1, 12, 32)
+        assertRaises(MethodSignatureError, foo.method1, 12, 'some string')
+        assertRaises(MethodSignatureError, foo.method1, 'string', 12, 14)
 
     def test_flex_should_match_types_on_multiple_arguments_generic(self):
         class Foo:
@@ -604,8 +601,8 @@ class RegularClass(object):
         assertEqual('ok', foo.method1((1,), None, 12))
         assertEqual('ok', foo.method1(12, 14, []))
         assertEqual('ok', foo.method1('some string', 'another one', False))
-        assertRaises(InvalidMethodSignature, foo.method1, 'string', 12)
-        assertRaises(InvalidMethodSignature, foo.method1, 'string', 12, 13, 14)
+        assertRaises(MethodSignatureError, foo.method1, 'string', 12)
+        assertRaises(MethodSignatureError, foo.method1, 'string', 12, 13, 14)
 
     def test_flex_should_match_types_on_multiple_arguments_classes(self):
         class Foo:
@@ -615,8 +612,8 @@ class RegularClass(object):
         bar = Bar()
         flex(foo).method1(object, Bar).returns('ok')
         assertEqual('ok', foo.method1('some string', bar))
-        assertRaises(InvalidMethodSignature, foo.method1, bar, 'some string')
-        assertRaises(InvalidMethodSignature, foo.method1, 12, 'some string')
+        assertRaises(MethodSignatureError, foo.method1, bar, 'some string')
+        assertRaises(MethodSignatureError, foo.method1, 12, 'some string')
 
     def test_flex_should_match_keyword_arguments(self):
         class Foo:
@@ -627,9 +624,9 @@ class RegularClass(object):
         foo.method1(1, arg3=3, arg2=2)
         self._tear_down()
         flex(foo).method1(1, arg3=3, arg2=2)
-        assertRaises(InvalidMethodSignature, foo.method1, arg2=2, arg3=3)
-        assertRaises(InvalidMethodSignature, foo.method1, 1, arg2=2, arg3=4)
-        assertRaises(InvalidMethodSignature, foo.method1, 1)
+        assertRaises(MethodSignatureError, foo.method1, arg2=2, arg3=3)
+        assertRaises(MethodSignatureError, foo.method1, 1, arg2=2, arg3=4)
+        assertRaises(MethodSignatureError, foo.method1, 1)
 
     def test_flex_calls_should_match_keyword_arguments(self):
         class Foo:
@@ -742,8 +739,8 @@ class RegularClass(object):
         user = User()
         try:
             flex(user).nonexistent()
-            raise Exception('failed to raise MethodDoesNotExist')
-        except MethodDoesNotExist:
+            raise Exception('failed to raise FlexError')
+        except FlexError:
             pass
 
     def test_flex_should_not_explode_on_unicode_formatting(self):
@@ -798,21 +795,21 @@ class RegularClass(object):
         flex(foo).method('foo').runs().times(1)
         flex(foo).method('bar').runs().times(1)
         foo.method('foo')
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
     def test_should_give_reasonable_error_for_builtins(self):
         try:
             flex(dict).keys
-            raise Exception('AttemptingToMockBuiltin not raised')
-        except AttemptingToMockBuiltin:
+            raise Exception('MockBuiltinError not raised')
+        except MockBuiltinError:
             pass
 
     def test_should_give_reasonable_error_for_instances_of_builtins(self):
         d = dict()
         try:
             flex(d).keys
-            raise Exception('AttemptingToMockBuiltin not raised')
-        except AttemptingToMockBuiltin:
+            raise Exception('MockBuiltinError not raised')
+        except MockBuiltinError:
             pass
 
     def test_flex_should_replace_method(self):
@@ -893,7 +890,7 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).foo(
             re.compile('^arg1.*asdf$'), arg2=re.compile('a')).returns('mocked')
-        assertRaises(InvalidMethodSignature,
+        assertRaises(MethodSignatureError,
                      foo.foo, 'arg1somejunkasdfa', arg2='a')
 
     def test_arg_matching_with_regex_fails_when_regex_doesnt_match_kwarg(self):
@@ -902,7 +899,7 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).foo(
             re.compile('^arg1.*asdf$'), arg2=re.compile('a')).returns('mocked')
-        assertRaises(InvalidMethodSignature,
+        assertRaises(MethodSignatureError,
             foo.foo, 'arg1somejunkasdf', arg2='b')
 
     def test_flex_class_returns_same_object_on_repeated_calls(self):
@@ -925,7 +922,7 @@ class RegularClass(object):
         flex(foo).bar
         flex(foo).bar('a').ordered()
         flex(foo).bar('b').ordered()
-        assertRaises(MethodCalledOutOfOrder, foo.bar, 'b')
+        assertRaises(CallOrderError, foo.bar, 'b')
 
     def test_fake_object_takes_any_attribute(self):
         foo = fake()
@@ -944,8 +941,8 @@ class RegularClass(object):
         mock.select_channel.times(1).when(lambda: radio.is_on)
         mock.adjust_volume(5).runs().times(1).when(lambda: radio.is_on)
 
-        assertRaises(InvalidState, radio.select_channel)
-        assertRaises(InvalidState, radio.adjust_volume, 5)
+        assertRaises(StateError, radio.select_channel)
+        assertRaises(StateError, radio.adjust_volume, 5)
         radio.is_on = True
         radio.select_channel()
         radio.adjust_volume(5)
@@ -956,13 +953,13 @@ class RegularClass(object):
 
         foo = Foo()
         flex(foo).bar.runs().times(1, 2)
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
         flex(foo).bar.runs().times(1, 2)
         foo.bar()
         foo.bar()
         foo.bar()
-        assertRaises(MethodNotCalled, self._tear_down)
+        assertRaises(MethodCallError, self._tear_down)
 
         flex(foo).bar.runs().times(1, 2)
         foo.bar()

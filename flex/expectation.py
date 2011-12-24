@@ -22,7 +22,9 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
-from flex.exceptions import *
+from flex.exceptions import CallOrderError
+from flex.exceptions import FlexError
+from flex.exceptions import MethodCallError
 from flex.helpers import _arg_to_str
 from flex.helpers import _format_args
 from flex.helpers import _isclass
@@ -232,7 +234,7 @@ class Expectation(object):
         """Verify that this expectation has been met.
 
         Raises:
-            MethodNotCalled Exception
+            CallOrderError
         """
         failed = False
         message = ''
@@ -255,7 +257,7 @@ class Expectation(object):
         if not failed:
             return
         else:
-            raise MethodNotCalled(
+            raise MethodCallError(
                 '%s expected to be called %s times, called %s times' %
                     (_format_args(self.method, self.args),
                     message,
@@ -283,7 +285,7 @@ class Expectation(object):
             if (exp.method == self.method and
                     not _match_args(self.args, exp.args) and
                     not exp.times_called):
-                raise MethodCalledOutOfOrder(
+                raise CallOrderError(
                         '%s called before %s' %
                         (_format_args(self.method, self.args),
                          _format_args(exp.method, exp.args)))
