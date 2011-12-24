@@ -39,7 +39,6 @@ def flex(spec):
 
     Args:
         - spec: object (or class or module) to mock
-        - kwargs: method/return_value pairs to attach to the object
 
     Returns:
         Flex object
