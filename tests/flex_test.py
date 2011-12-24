@@ -117,11 +117,11 @@ class RegularClass(object):
         foo.method_foo('bar')
         foo.method_foo('baz')
         expectation = mock._get_expectation('method_foo', ('foo',))
-        assertEqual(0, expectation.times_called)
+        assertEqual(0, expectation._times_called)
         expectation = mock._get_expectation('method_foo', ('bar',))
-        assertEqual(2, expectation.times_called)
+        assertEqual(2, expectation._times_called)
         expectation = mock._get_expectation('method_foo', ('baz',))
-        assertEqual(1, expectation.times_called)
+        assertEqual(1, expectation._times_called)
 
     def test_flex_should_set_expectation_call_numbers(self):
         class Foo:
@@ -143,7 +143,7 @@ class RegularClass(object):
         foo = Foo()
         mock.method_foo.raises(FakeException)
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._get_expectation('method_foo').times_called)
+        assertEqual(1, mock._get_expectation('method_foo')._times_called)
 
     def test_flex_should_check_raised_exceptions_instance_with_args(self):
         class Foo:
@@ -155,7 +155,7 @@ class RegularClass(object):
                 pass
         mock.method_foo.raises(FakeException(1, arg2=2))
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._get_expectation('method_foo').times_called)
+        assertEqual(1, mock._get_expectation('method_foo')._times_called)
 
     def test_flex_should_check_raised_exceptions_class_with_args(self):
         class Foo:
@@ -167,7 +167,7 @@ class RegularClass(object):
                 pass
         mock.method_foo.raises(FakeException, 1, arg2=2)
         assertRaises(FakeException, foo.method_foo)
-        assertEqual(1, mock._get_expectation('method_foo').times_called)
+        assertEqual(1, mock._get_expectation('method_foo')._times_called)
 
     def test_flex_should_match_any_args_by_default(self):
         class Foo:
@@ -403,8 +403,7 @@ class RegularClass(object):
         foo = Foo()
         flex(foo).method_foo.returns('value_bar').times(0, 1)
         foo.method_foo()
-        foo.method_foo()
-        assertRaises(MethodCallError, self._tear_down)
+        assertRaises(MethodCallError, foo.method_foo)
 
     def test_flex_works_with_never_when_true(self):
         class Foo:
@@ -418,8 +417,7 @@ class RegularClass(object):
             def method_foo(self): pass
         foo = Foo()
         flex(foo).method_foo.returns('value_bar').times(0)
-        foo.method_foo()
-        assertRaises(MethodCallError, self._tear_down)
+        assertRaises(MethodCallError, foo.method_foo)
     
     def test_flex_get_flex_expectation_should_work_with_args(self):
         class Foo:
@@ -956,7 +954,7 @@ class RegularClass(object):
         assertRaises(FlexError, expectation.when, radio.is_on)
         expectation.when(lambda: radio.is_on)
 
-    def test_support_at_least_and_at_most_together(self):
+    def test_support_at_least_and_at_most_together_outside_range(self):
         class Foo:
             def bar(self): pass
 
@@ -967,9 +965,13 @@ class RegularClass(object):
         flex(foo).bar.runs().times(1, 2)
         foo.bar()
         foo.bar()
-        foo.bar()
-        assertRaises(MethodCallError, self._tear_down)
+        assertRaises(MethodCallError, foo.bar)
 
+    def test_support_at_least_and_at_most_together_inside_range(self):
+        class Foo:
+            def bar(self): pass
+
+        foo = Foo()
         flex(foo).bar.runs().times(1, 2)
         foo.bar()
         self._tear_down()

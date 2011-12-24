@@ -69,12 +69,13 @@ class Expectation(object):
         if return_value is not None:
             return_values.append(value)
         self._replace_with = None
-        self.times_called = 0
-        self.expected_calls = {EXACTLY: None, AT_LEAST: None, AT_MOST: None}
-        self.runnable = lambda: True
+        self._times_called = 0
+        self._expected_calls = {EXACTLY: None, AT_LEAST: None, AT_MOST: None}
+        self._runnable = lambda: True
         self._mock = mock
         self._pass_thru = False
         self._ordered = False
+        self._verified = False
 
     def __str__(self):
         return ('%s -> (%s)' %
@@ -196,7 +197,7 @@ class Expectation(object):
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
-        expected_calls = self.expected_calls
+        expected_calls = self._expected_calls
         if end is None:
             expected_calls[AT_LEAST] = start
         elif end <= start:
@@ -229,41 +230,52 @@ class Expectation(object):
         """
         if not hasattr(func, '__call__'):
             raise FlexError('when() parameter must be callable')
-        self.runnable = func
+        self._runnable = func
         return self
 
-    def _verify(self):
+    def _verify(self, final=True):
         """Verify that this expectation has been met.
+
+        Args:
+            final: boolean, True if no further calls to this method expected
+            (skip checking at_least expectations when False)
 
         Raises:
             CallOrderError
         """
+        if self._verified:
+            return  # ensure we only raise one error per failed expectation
         failed = False
         message = ''
-        expected_calls = self.expected_calls
+        expected_calls = self._expected_calls
         if expected_calls[EXACTLY] is not None:
             message = 'exactly %s' % expected_calls[EXACTLY]
-            if self.times_called != expected_calls[EXACTLY]:
-                failed = True
+            if final:
+                if self._times_called != expected_calls[EXACTLY]:
+                    failed = True
+            else:
+                if self._times_called > expected_calls[EXACTLY]:
+                    failed = True
         else:
-            if expected_calls[AT_LEAST] is not None:
+            if final and expected_calls[AT_LEAST] is not None:
                 message = 'at least %s' % expected_calls[AT_LEAST]
-                if self.times_called < expected_calls[AT_LEAST]:
+                if self._times_called < expected_calls[AT_LEAST]:
                     failed = True
             if expected_calls[AT_MOST] is not None:
                 if message:
                     message += ' and '
                 message += 'at most %s' % expected_calls[AT_MOST]
-                if self.times_called > expected_calls[AT_MOST]:
+                if self._times_called > expected_calls[AT_MOST]:
                     failed = True
         if not failed:
             return
         else:
+            self._verified = True
             raise MethodCallError(
                 '%s expected to be called %s times, called %s times' %
                     (_format_args(self.method, self.args),
                     message,
-                    self.times_called))
+                    self._times_called))
 
     def _reset(self):
         """Returns methods overriden by this expectation to their originals."""
@@ -286,7 +298,7 @@ class Expectation(object):
         for exp in flex_objects[self._mock]:
             if (exp.method == self.method and
                     not _match_args(self.args, exp.args) and
-                    not exp.times_called):
+                    not exp._times_called):
                 raise CallOrderError(
                         '%s called before %s' %
                         (_format_args(self.method, self.args),

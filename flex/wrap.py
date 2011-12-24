@@ -166,11 +166,12 @@ class Wrap(object):
             arguments = {'kargs': kargs, 'kwargs': kwargs}
             expectation = self._get_expectation(method, arguments)
             if expectation:
-                if not expectation.runnable():
+                if not expectation._runnable():
                     raise StateError(
                         '%s expected to be called when %s is True' %
-                        (method, _get_runnable_name(expectation.runnable)))
-                expectation.times_called += 1
+                        (method, _get_runnable_name(expectation._runnable)))
+                expectation._times_called += 1
+                expectation._verify(final=False)
                 _pass_thru = expectation._pass_thru
                 _replace_with = expectation._replace_with
                 if _pass_thru:
