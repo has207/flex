@@ -22,6 +22,9 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  """
 
 
+__all__ = ['flex', 'fake']
+
+
 import sys
 
 from flex.fake import _Fake
@@ -38,10 +41,10 @@ def flex(spec):
         >>> flex(SomeClass).some_method.returns('stuff')
 
     Args:
-        - spec: object (or class or module) to mock
+        - spec: object (or class or module) to wrap
 
     Returns:
-        Flex object
+        _Flex object
     """
     matches = [x for x in _flex_objects if x._Flex__object is spec]
     if matches:
@@ -61,8 +64,13 @@ def fake(**kwargs):
 
 
 def verify():
-    """Performs flex-specific teardown tasks."""
+    """Performs flex-specific teardown tasks.
 
+    If you find yourself needing to use this directly then there is a bug
+    in the runner integration code, or your test runner isn't supported.
+    Consider opening a bug or feature request AttributeError
+    http://github.com/has207/flex/issues
+    """
     saved = {}
     for mock_object, expectations in _flex_objects.items():
         saved[mock_object] = expectations[:]
@@ -143,14 +151,18 @@ def _patch_test_result(klass):
             # verify() twice and delegate up the class hierarchy
             # this doesn't help if there is a gap and only the parent's
             # parent class was patched, but should cover most screw-ups
+            pre_success = False
+            if hasattr(self, '_pre_flex_success'):
+                pre_success = True
+                del self._pre_flex_success
             try:
                 verify()
                 saved_addSuccess(self, test)
             except:
-                if hasattr(self, '_pre_flex_success'):
+                if pre_success:
                     self.addFailure(test, sys.exc_info())
-            if hasattr(self, '_pre_flex_success'):
-                del self._pre_flex_success
+                # otherwise let the runner show whatever other failure
+                # happened first
         return saved_stopTest(self, test)
 
     if klass.stopTest is not stopTest:
