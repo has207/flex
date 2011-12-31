@@ -45,7 +45,7 @@ class ReturnValue(object):
         if self.raises:
             return '%s(%s)' % (self.raises, _arg_to_str(self.value))
         else:
-            return '%s' % _arg_to_str(self.value)
+            return _arg_to_str(self.value)
 
 
 class Expectation(object):
@@ -84,10 +84,15 @@ class Expectation(object):
 
     def __call__(self, *kargs, **kwargs):
         if self.args:
-            raise FlexError('Arguments can only be specified once')
+            self.__raise(FlexError, 'Arguments can only be specified once')
 
         self.args = {'kargs': kargs, 'kwargs': kwargs}
         return self
+
+    def __getattr__(self, name):
+        self.__raise(
+            AttributeError, "'%s' object has not attribute '%s'" %
+                (self.__class__.__name__, name))
 
     def returns(self, *values):
         """Override the return value of this expectation's method.
@@ -108,7 +113,8 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise FlexError('returns() cannot be specified after runs()')
+            self.__raise(
+                FlexError, 'returns() cannot be specified after runs()')
         return_values = self._action['return_values']
         if not values:
             return_values.append(ReturnValue())
@@ -129,7 +135,8 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise FlexError('raises() cannot be specified after runs()')
+            self.__raise(
+                FlexError, 'raises() cannot be specified after runs()')
         args = {'kargs': kargs, 'kwargs': kwargs}
         return_values = self._action['return_values']
         return_values.append(ReturnValue(raises=exception, value=args))
@@ -145,7 +152,7 @@ class Expectation(object):
         """
         replace_with = self._replace_with
         if replace_with:
-            raise FlexError('yields() cannot be specified after runs()')
+            self.__raise(FlexError, 'yields() cannot be specified after runs()')
         yield_values = self._action['yield_values']
         for value in values:
             yield_values.append(ReturnValue(value))
@@ -160,20 +167,20 @@ class Expectation(object):
         Returns:
             - self, i.e. can be chained with other Expectation methods
         """
-        if any(val for _, val in self._action.items()):
-          raise FlexError('runs() cannot be mixed with return values')
+        if [val for _, val in self._action.items() if val]:
+            self.__raise(FlexError, 'runs() cannot be mixed with return values')
         if not function:
-          function = self.original_method
+            function = self.original_method
         replace_with = self._replace_with
         original_method = self.original_method
         if replace_with:
-            raise FlexError('runs() cannot be specified twice')
-        mock = self.mock
-        obj = mock._Flex__object
+            self.__raise(FlexError, 'runs() cannot be specified twice')
+        obj = self.mock._Flex__object
         func_type = type(function)
         if _isclass(obj):
             if func_type is not classmethod and func_type is not staticmethod:
-                raise FlexError('calls() cannot be used on a class mock')
+                self.__raise(
+                    FlexError, 'calls() cannot be used on a class mock')
         if function == original_method:
             self._pass_thru = True
         self._replace_with = function
@@ -221,7 +228,7 @@ class Expectation(object):
             - self, i.e. can be chained with other Expectation methods
         """
         if not hasattr(func, '__call__'):
-            raise FlexError('when() parameter must be callable')
+            self.__raise(FlexError, 'when() parameter must be callable')
         self._runnable = func
         return self
 
@@ -263,7 +270,8 @@ class Expectation(object):
             return
         else:
             self._verified = True
-            raise MethodCallError(
+            self.__raise(
+                MethodCallError,
                 '%s expected to be called %s times, called %s times' %
                     (_format_args(self.method, self.args),
                     message,
@@ -271,8 +279,7 @@ class Expectation(object):
 
     def _reset(self):
         """Returns methods overriden by this expectation to their originals."""
-        mock = self.mock
-        obj = mock._Flex__object
+        obj = self.mock._Flex__object
         original_method = self.original_method
         if original_method:
             method = self.method
@@ -299,3 +306,14 @@ class Expectation(object):
                     self.args and exp.args and    # ignore default stub case
                     _match_args(self.args, exp.args)):
                 break
+
+    def __raise(self, exception, message):
+        """Safe internal raise implementation.
+
+        In case we're patching builtins, it's important to reset the
+        expectation before raising any exceptions or else things like
+        open() might be stubbed out and the resulting runner errors are very
+        difficult to diagnose.
+        """
+        self._reset()
+        raise exception(message)

@@ -15,8 +15,8 @@ class ModernClass(object):
             mock = flex(sys.modules['__builtin__'])
         else:
             mock = flex(sys.modules['builtins'])
-        mock.open.runs()
-        mock.open('file_name').returns(fake(read=lambda: 'some data')).times(1)
+        fake_fd = fake(read=lambda: 'some data')
+        mock.open('file_name').returns(fake_fd).times(1)
         with open('file_name') as f:
             data = f.read()
         self.assertEqual('some data', data)

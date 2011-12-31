@@ -573,7 +573,9 @@ class RegularClass(object):
         flex(foo).method1(str, int).returns('ok')
         assertEqual('ok', foo.method1('some string', 12))
         assertRaises(MethodSignatureError, foo.method1, 12, 32)
+        flex(foo).method1(str, int).returns('ok')
         assertRaises(MethodSignatureError, foo.method1, 12, 'some string')
+        flex(foo).method1(str, int).returns('ok')
         assertRaises(MethodSignatureError, foo.method1, 'string', 12, 14)
 
     def test_flex_should_match_types_on_multiple_arguments_generic(self):
@@ -586,6 +588,7 @@ class RegularClass(object):
         assertEqual('ok', foo.method1(12, 14, []))
         assertEqual('ok', foo.method1('some string', 'another one', False))
         assertRaises(MethodSignatureError, foo.method1, 'string', 12)
+        flex(foo).method1(object, object, object).returns('ok')
         assertRaises(MethodSignatureError, foo.method1, 'string', 12, 13, 14)
 
     def test_flex_should_match_types_on_multiple_arguments_classes(self):
@@ -597,6 +600,7 @@ class RegularClass(object):
         flex(foo).method1(object, Bar).returns('ok')
         assertEqual('ok', foo.method1('some string', bar))
         assertRaises(MethodSignatureError, foo.method1, bar, 'some string')
+        flex(foo).method1(object, Bar).returns('ok')
         assertRaises(MethodSignatureError, foo.method1, 12, 'some string')
 
     def test_flex_should_match_keyword_arguments(self):
@@ -609,7 +613,9 @@ class RegularClass(object):
         verify()
         flex(foo).method1(1, arg3=3, arg2=2)
         assertRaises(MethodSignatureError, foo.method1, arg2=2, arg3=3)
+        flex(foo).method1(1, arg3=3, arg2=2)
         assertRaises(MethodSignatureError, foo.method1, 1, arg2=2, arg3=4)
+        flex(foo).method1(1, arg3=3, arg2=2)
         assertRaises(MethodSignatureError, foo.method1, 1)
 
     def test_flex_calls_should_match_keyword_arguments(self):

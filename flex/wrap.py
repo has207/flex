@@ -88,13 +88,9 @@ class _Flex(object):
                 name = obj.__name__
             else:
                 name = obj.__class__.__name__
-            method = '_%s__%s' % (name, method.lstrip('_'))
+            method = '_%s__%s' % (name.lstrip('_'), method.lstrip('_'))
         if not isinstance(obj, _Flex) and not hasattr(obj, method):
             raise FlexError('%s does not have method %s' % (obj, method))
-            exc_msg = '%s does not have method %s' % (obj, method)
-            if method == '__new__':
-                exc_msg = 'old-style classes do not have a __new__() method'
-            raise FlexError(exc_msg)
         if self not in _flex_objects:
             _flex_objects[self] = []
         expectation = self.__create_expectation(method, return_value)
@@ -197,6 +193,12 @@ class _Flex(object):
                 else:
                     return return_value.value
             else:
+                # make sure to clean up expectations to ensure none of them
+                # interfere with the runner's error reporing mechanism
+                # e.g. open()
+                for mock_object, expectations in _flex_objects.items():
+                    for expectation in expectations:
+                        expectation._reset()
                 raise MethodSignatureError(_format_args(method, arguments))
 
         return mock_method
