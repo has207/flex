@@ -98,10 +98,10 @@ class Expectation(object):
         """Override the return value of this expectation's method.
 
         Provided return values are returned on successive invocations of the
-        method. When and_return is given multiple times, each additional
+        method. When returns() is given multiple times, each additional
         value is added to the return value list.
         
-        It is possible to mix and_return with and_raise to alternate between
+        It is possible to mix returns() with raises() to alternate between
         returning a value and raising and exception on different method
         invocations.
 
