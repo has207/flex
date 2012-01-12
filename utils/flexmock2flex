@@ -1,4 +1,19 @@
-# imports
+# Converts a Python test file from flexmock to flex.
+# This script is likely not perfect, and in particular assumes
+# valid flexmock syntax, such that I could think of. Flexmock
+# syntax is rather loose so it's quite possible I missed something.
+#
+# Tested with BSD and GNU versions of sed.
+#
+# Usage:
+#
+#     $ sed -f this_file test_file.py
+#
+# If you're really brave (or use git) run sed -i
+# to update the file in-place. Otherwise redirect to a new
+# file and do a diff first to make sure everything is sane.
+
+# fix imports
 /^from flexmock import flexmock$/ {
 s/mock//g
 a\
@@ -6,7 +21,7 @@ from flex import fake
 }
 /^from flexmock import/ s//from flex import/
 
-# special functions
+# fix special functions (if any are imported)
 s/flexmock_teardown/verify/g
 
 # strip whitespace
@@ -45,12 +60,47 @@ s/\.at_most[ \t]*([ \t]*/.at_most(/
 /flexmock([ \t]*[a-zA-Z]*[a-zA-Z0-9]*[ \t]*,/ s/flexmock/flex/
 /flexmock([ \t]*[a-zA-Z]*[a-zA-Z0-9]*[ \t]*=/ s/flexmock/fake/
 
-# main
-/flex(/ {
-  # normalize order
-  s/\(.*\.should_receive([^)]*)\)\(.*\)\(.with_args([^)]*)\)/\1\3\2/
-  s/\(.*\.should_call([^)]*)\)\(.*\)\(.with_args([^)]*)\)/\1\3\2/
+# normalize times
+s/\.once()/.once/
+s/\.once/.times(1)/
+s/\.twice()/.twice/
+s/\.twice/.times(2)/
+s/\.never()/.never/
+s/\.never/.times(0)/
 
+# sort out times modifiers
+/\.at_least\..*\.at_most\./ {
+  s/\.times(\([^)]*\))\(.*\)\.times(\([^)]*\))/.times(\1, \3)\2/
+  s/\.at_least//
+  s/\.at_most//
+}
+/\.at_least\./ {
+  s/\.times(\([^)]*\))/.times(\1, None)/
+  s/\.at_least//
+}
+/\.at_most\./ {
+  s/\.times(\([^)]*\))/.times(0, \1)/
+  s/\.at_most//
+}
+
+# ensure when() is at the end
+s/\(.*\)\(\.when([^)]*)\)\(.*\)/\1\3\2/
+
+# ensure times is even further at the end
+s/\(.*\)\(\.times([^)]*)\)\(.*\)/\1\3\2/
+
+# ensure with_args immediately follows should_receive/should_call
+s/\(.*\.should_receive([^)]*)\)\(.*\)\(.with_args([^)]*)\)/\1\3\2/
+s/\(.*\.should_call([^)]*)\)\(.*\)\(.with_args([^)]*)\)/\1\3\2/
+
+# silly hack to only match legit flexmock calls (hopefully)
+/flex(/ b main
+/\.should_receive(/ b main
+/\.should_call(/ b main
+/\.new_instances(/ b main
+
+/^$/ {
+  :main
   # strip off should_receive
   /\.should_receive(/ {
     s/\.should_receive([']\([^']*\)['])/.\1/
@@ -90,19 +140,14 @@ s/\.at_most[ \t]*([ \t]*/.at_most(/
   # replace and_yield
   s/\.and_yields/.yields/g
 
-  # once
-  s/\.once()/.once/
-  s/\.once/.times(1)/
-
-  # twice
-  s/\.twice()/.twice/
-  s/\.twice/.times(2)/
-
-  # never
-  s/\.never()/.never/
-  s/\.never/.times(0)/
-
-  # ensure mock has parens
+  # ensure mock has no parens
   s/\.mock()/.mock/
-  s/\.mock/.mock()/
+
+  # ensure ordered() has parens
+  s/\.ordered()/.ordered/
+  s/\.ordered/.ordered()/
+
+  # get rid of one_by_one (it's the default now)
+  s/\.one_by_one()//
+  s/\.one_by_one//
 }
